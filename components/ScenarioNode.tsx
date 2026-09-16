@@ -30,30 +30,39 @@ export default function ScenarioNode({ scenario, onPress }: Props) {
     : completed
       ? styles.nodeCompleted
       : styles.nodeLocked;
-  const iconColor = locked ? '#9FB1C6' : '#FFFFFF';
+  const iconColor = current ? '#3E8BD8' : completed ? '#D98E24' : '#AFC0D4';
 
   return (
     <View style={styles.container}>
-      <TouchableRipple borderless disabled={locked} onPress={onPress} style={[styles.node, nodeStyle]}>
-        <MaterialCommunityIcons name={iconName} size={40} color={iconColor} />
-      </TouchableRipple>
+      <View style={styles.nodeArea}>
+        <TouchableRipple
+          testID={`node-${scenario.id}`}
+          borderless
+          disabled={locked}
+          onPress={onPress}
+          style={[styles.node, nodeStyle]}
+        >
+          <MaterialCommunityIcons name={iconName} size={current ? 34 : 30} color={iconColor} />
+        </TouchableRipple>
 
-      {completed && (
-        <View testID="badge-completed" style={[styles.badge, styles.badgeCompleted]}>
-          <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" />
-        </View>
-      )}
-      {locked && (
-        <View testID="badge-locked" style={[styles.badge, styles.badgeLocked]}>
-          <MaterialCommunityIcons name="lock" size={14} color="#FFFFFF" />
-        </View>
-      )}
+        {completed && (
+          <View testID="badge-completed" style={[styles.badge, styles.badgeCompleted]}>
+            <MaterialCommunityIcons name="check" size={13} color="#FFFFFF" />
+          </View>
+        )}
+        {locked && (
+          <View testID="badge-locked" style={[styles.badge, styles.badgeLocked]}>
+            <MaterialCommunityIcons name="lock" size={12} color="#FFFFFF" />
+          </View>
+        )}
+      </View>
 
-      <Text style={[styles.name, locked && styles.nameLocked]}>{scenario.name}</Text>
-      {current && (
+      {current ? (
         <View style={styles.currentPill}>
-          <Text style={styles.currentLabel}>Atual</Text>
+          <Text style={styles.currentLabel}>{`Cenário: ${scenario.name}`}</Text>
         </View>
+      ) : (
+        <Text style={[styles.name, locked && styles.nameLocked]}>{scenario.name}</Text>
       )}
     </View>
   );
@@ -63,65 +72,72 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
+  nodeArea: {
+    alignItems: 'center',
+  },
   node: {
-    width: 92,
-    height: 92,
-    borderRadius: 26,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
+    elevation: 3,
   },
   nodeCompleted: {
-    backgroundColor: '#F6B44A',
+    backgroundColor: '#FCE0A0',
   },
   nodeCurrent: {
-    backgroundColor: '#4A90D9',
-    borderRadius: 46,
-    borderWidth: 5,
-    borderColor: '#FFFFFF',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 4,
+    borderColor: '#4A90D9',
+    elevation: 5,
   },
   nodeLocked: {
-    backgroundColor: '#D8E0EA',
+    backgroundColor: '#EDF3FA',
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: 22,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    top: -5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   badgeCompleted: {
+    right: -5,
     backgroundColor: '#6BCB77',
   },
   badgeLocked: {
+    left: -5,
     backgroundColor: '#9FB1C6',
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#2E6FB7',
-    marginTop: 8,
+    marginTop: 6,
   },
   nameLocked: {
     color: '#9FB1C6',
   },
   currentPill: {
-    marginTop: 6,
+    marginTop: 8,
     backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderWidth: 1,
-    borderColor: '#A9CBF0',
+    borderColor: '#BBD8F5',
   },
   currentLabel: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#4A90D9',
+    color: '#3E8BD8',
   },
 });
