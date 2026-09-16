@@ -1,6 +1,6 @@
 # Fluxo de trabalho
 
-O Ludo é desenvolvido por uma pessoa só, mas o histórico do repositório é parte da entrega do TCC: ele precisa mostrar como o trabalho evoluiu, não apenas onde chegou. Por isso nada é commitado direto na `main` — toda mudança passa por uma branch e por um pull request que explica a decisão em texto corrido.
+O Ludo é desenvolvido por uma pessoa só, mas o histórico do repositório é parte da entrega do TCC: ele precisa mostrar como o trabalho evoluiu, não apenas onde chegou. Por isso nada é commitado direto na `main`: toda mudança passa por uma branch e por um pull request que explica a decisão em texto corrido.
 
 ## Branches
 
@@ -34,7 +34,7 @@ Um commit deve contar uma unidade de trabalho completa. Vale mais um commit que 
 
 ## Pull requests
 
-Cada branch vira um pull request antes de entrar na `main`. O template em `.github/PULL_REQUEST_TEMPLATE.md` é preenchido em texto corrido, não em tópicos soltos: o objetivo é que, meses depois, a leitura do PR reconstrua o porquê da mudança — a alternativa considerada, a restrição que pesou, o que ficou de fora de propósito.
+Cada branch vira um pull request antes de entrar na `main`. O template em `.github/PULL_REQUEST_TEMPLATE.md` é preenchido em texto corrido, não em tópicos soltos: o objetivo é que, meses depois, a leitura do PR reconstrua o porquê da mudança: a alternativa considerada, a restrição que pesou, o que ficou de fora de propósito.
 
 Antes de abrir o PR:
 

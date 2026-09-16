@@ -2,11 +2,11 @@
 
 Aplicativo móvel de apoio à dessensibilização auditiva de crianças com Transtorno do Espectro Autista (TEA) e hipersensibilidade auditiva. O Ludo expõe a criança, de forma gradual e lúdica, a sons do cotidiano (despertador, televisão, pássaros, sinal da escola, buzina) organizados em uma trilha de cenários progressivos: quarto, sala, parque, rua e escola. A criança controla o volume dentro de um teto seguro e pode interromper a reprodução a qualquer momento, enquanto o responsável configura os limites e acompanha o progresso em uma área protegida.
 
-Trabalho de Conclusão de Curso — Tecnologia em Sistemas para Internet, UTFPR, 2026.
+Trabalho de Conclusão de Curso do curso de Tecnologia em Sistemas para Internet, UTFPR, 2026.
 
 ## O problema
 
-A hipersensibilidade auditiva atinge parte significativa das crianças com TEA e transforma situações comuns — o sinal da escola, o liquidificador, a buzina na rua — em episódios de sofrimento e desregulação. As abordagens terapêuticas de exposição gradual costumam depender de acompanhamento presencial e de material improvisado pelo mediador, o que limita a frequência da prática e a consistência dos estímulos.
+A hipersensibilidade auditiva atinge parte significativa das crianças com TEA e transforma situações comuns (o sinal da escola, o liquidificador, a buzina na rua) em episódios de sofrimento e desregulação. As abordagens terapêuticas de exposição gradual costumam depender de acompanhamento presencial e de material improvisado pelo mediador, o que limita a frequência da prática e a consistência dos estímulos.
 
 O Ludo propõe levar essa exposição controlada para o ambiente doméstico: sons reais, organizados por contexto e intensidade, apresentados dentro de limites definidos pelo responsável e com o controle de interrupção sempre à mão da criança.
 
@@ -88,8 +88,8 @@ npm test
 
 ## Documentação
 
-- [Arquitetura e decisões técnicas](docs/arquitetura.md) — organização das camadas, modelo de dados e as razões de cada escolha.
-- [Fluxo de trabalho](docs/fluxo-de-trabalho.md) — convenção de branches, commits e pull requests adotada no projeto.
+- [Arquitetura e decisões técnicas](docs/arquitetura.md): organização das camadas, modelo de dados e as razões de cada escolha.
+- [Fluxo de trabalho](docs/fluxo-de-trabalho.md): convenção de branches, commits e pull requests adotada no projeto.
 
 ## Estado atual
 

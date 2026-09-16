@@ -1,6 +1,6 @@
 # Arquitetura
 
-Este documento registra como o Ludo está organizado e por que cada escolha foi feita. A intenção é que qualquer pessoa que abra o repositório — inclusive a banca — consiga reconstruir o raciocínio sem precisar ler todo o código.
+Este documento registra como o Ludo está organizado e por que cada escolha foi feita. A intenção é que qualquer pessoa que abra o repositório, inclusive a banca, consiga reconstruir o raciocínio sem precisar ler todo o código.
 
 ## Visão geral
 
@@ -29,8 +29,8 @@ O Ludo é um aplicativo React Native com Expo que funciona principalmente offlin
 
 A navegação usa o roteamento por arquivos do Expo Router, com dois grupos que separam os perfis de uso:
 
-- `(child)` — `journey.tsx` (trilha de cenários) e `exercise/[scenarioId].tsx` (player do cenário).
-- `(parent)` — `login.tsx`, `register.tsx`, `settings.tsx`, `children.tsx` e `child-form.tsx`.
+- `(child)`: `journey.tsx` (trilha de cenários) e `exercise/[scenarioId].tsx` (player do cenário).
+- `(parent)`: `login.tsx`, `register.tsx`, `settings.tsx`, `children.tsx` e `child-form.tsx`.
 
 A separação em grupos não é só organizacional: ela cria a fronteira natural onde a proteção de acesso do responsável é aplicada, sem que a criança precise atravessar telas administrativas para chegar à trilha.
 
@@ -38,14 +38,14 @@ A separação em grupos não é só organizacional: ela cria a fronteira natural
 
 O estado compartilhado fica em dois contextos, cada um com uma responsabilidade única:
 
-- **`AuthContext`** — guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app e expõe `login` e `logout`. A resposta do PocketBase chega em `snake_case` e é convertida para o formato interno em `camelCase` por uma função de mapeamento, isolando o resto do app do formato do backend.
-- **`ProgressContext`** — mantém os cenários concluídos e a utilização semanal, derivada do histórico local de sessões.
+- **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app e expõe `login` e `logout`. A resposta do PocketBase chega em `snake_case` e é convertida para o formato interno em `camelCase` por uma função de mapeamento, isolando o resto do app do formato do backend.
+- **`ProgressContext`**: mantém os cenários concluídos e a utilização semanal, derivada do histórico local de sessões.
 
 A escolha pela Context API, e não por uma biblioteca de estado global, é proporcional ao problema: são dois domínios de estado, com poucas atualizações e sem necessidade de seletores ou memoização fina. Adotar uma solução maior aqui traria configuração sem benefício.
 
 ### Persistência local (`src/helpers/AsyncStorageHelper.ts`)
 
-O acesso ao Async Storage é centralizado em um helper tipado, com funções para texto, número, booleano e objeto. Isso evita `JSON.parse` espalhado pelas telas e concentra o tratamento de erro em um lugar só — leituras que falham devolvem `null` em vez de quebrar a interface, o que importa em um app que precisa abrir mesmo com o armazenamento inconsistente.
+O acesso ao Async Storage é centralizado em um helper tipado, com funções para texto, número, booleano e objeto. Isso evita `JSON.parse` espalhado pelas telas e concentra o tratamento de erro em um lugar só. Leituras que falham devolvem `null` em vez de quebrar a interface, o que importa em um app que precisa abrir mesmo com o armazenamento inconsistente.
 
 ### Comunicação com o backend (`src/services/api.ts`)
 
@@ -112,7 +112,7 @@ erDiagram
 - **Regras de acesso por dono no PocketBase**: a coleção `children` só permite leitura e escrita ao usuário autenticado que a criou, impedindo que um token válido acesse dados de outra família.
 - **Nenhum segredo no repositório**: a URL da API vem de variável de ambiente e o `.env` está fora do versionamento. O `.env.example` documenta as chaves esperadas sem expor valores.
 - **Banco local fora do versionamento**: `pb_data/` e o executável do PocketBase são ignorados, para que dados de teste com e-mails reais não acabem no histórico do Git.
-- **Teto de volume aplicado na reprodução**: o limite configurado pelo responsável restringe o próprio controle exibido à criança, em vez de apenas validar o valor no momento de salvar — a proteção precisa valer no ponto de uso, não só no cadastro.
+- **Teto de volume aplicado na reprodução**: o limite configurado pelo responsável restringe o próprio controle exibido à criança, em vez de apenas validar o valor no momento de salvar. A proteção precisa valer no ponto de uso, não só no cadastro.
 
 ### Limitações reconhecidas
 
@@ -121,7 +121,7 @@ erDiagram
 
 ## Testes
 
-Os testes usam Jest com o preset `jest-expo` e a Testing Library, concentrados nos componentes de interface com regra de negócio visível — o campo com rótulo, o nó da trilha e a visualização semanal. A prioridade foi cobrir o que o usuário enxerga e onde um erro passaria despercebido, em vez de perseguir cobertura numérica.
+Os testes usam Jest com o preset `jest-expo` e a Testing Library, concentrados nos componentes de interface com regra de negócio visível: o campo com rótulo, o nó da trilha e a visualização semanal. A prioridade foi cobrir o que o usuário enxerga e onde um erro passaria despercebido, em vez de perseguir cobertura numérica.
 
 ## O que ainda vai mudar
 
