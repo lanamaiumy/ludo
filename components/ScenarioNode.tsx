@@ -73,7 +73,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   nodeArea: {
+    height: 68,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   node: {
     width: 64,

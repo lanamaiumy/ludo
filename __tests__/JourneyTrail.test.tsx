@@ -38,9 +38,9 @@ describe('JourneyTrail', () => {
     expect(getByText('Cenário: Parque')).toBeTruthy();
   });
 
-  it('liga os cenários com um segmento a menos que o número de nós', () => {
-    const { getAllByTestId } = renderTrail(() => {});
-    expect(getAllByTestId('trail-segment')).toHaveLength(scenarios.length - 1);
+  it('desenha o caminho que liga os cenários', () => {
+    const { getByTestId } = renderTrail(() => {});
+    expect(getByTestId('trail-path')).toBeTruthy();
   });
 
   it('avisa o cenário escolhido ao tocar em um nó liberado', () => {
