@@ -11,7 +11,7 @@ type Props = {
 
 const SIDE_OFFSET = 72;
 const BLOCK_HEIGHT = 104;
-const BLOCK_GAP = 64;
+const BLOCK_GAP = 84;
 const NODE_CENTER = 34;
 
 function offsetAt(index: number) {
