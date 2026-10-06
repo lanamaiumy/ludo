@@ -118,7 +118,7 @@ cd backend && npm test
 
 A base funcional já cobre a autenticação do responsável, a trilha de cenários com bloqueio por etapa, o player com teto de volume e modo suave, e a visualização da utilização semanal. Os áudios em `assets/sounds/` ainda são arquivos reservados e serão substituídos por sons reais, em versão normal e suave para cada cenário.
 
-A API já tem o banco PostgreSQL modelado conforme o projeto do TCC, orquestrado em Docker, e as rotas de cadastro, login, perfil e PIN do responsável. Os próximos passos concentram-se nas rotas de crianças e configurações, histórico de sessões e progresso, na troca do PocketBase pela API no aplicativo e no sistema de recompensas visuais.
+A API já tem o banco PostgreSQL modelado conforme o projeto do TCC, orquestrado em Docker, e as rotas de cadastro, login, perfil e PIN do responsável, além do cadastro das crianças com volume máximo e tempo de sessão. Os próximos passos concentram-se nas rotas de histórico de sessões e progresso, na troca do PocketBase pela API no aplicativo e no sistema de recompensas visuais.
 
 ## Projeto relacionado
 
