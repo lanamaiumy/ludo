@@ -86,6 +86,13 @@ O código segue três camadas por assunto: a rota recebe a requisição e valida
 | `POST /auth/pin` | token | Cria o PIN da área restrita, uma única vez |
 | `POST /auth/pin/verificar` | token | Confere o PIN digitado para liberar a área restrita |
 | `PUT /auth/pin` | token | Troca o PIN mediante a senha da conta ("Esqueceu o PIN?") |
+| `GET /criancas` | token | Lista as crianças do responsável, cada uma com a sua configuração |
+| `POST /criancas` | token | Cadastra uma criança, já com a configuração padrão |
+| `GET /criancas/:id` | token | Devolve uma criança e a sua configuração |
+| `PATCH /criancas/:id` | token | Altera o nome da criança |
+| `DELETE /criancas/:id` | token | Remove a criança e tudo que pertence a ela |
+| `PUT /criancas/:id/configuracao` | token | Define o volume máximo e o tempo de sessão |
+| `PUT /criancas/:id/configuracao/padrao` | token | Volta a configuração para o padrão ("Retornar a configuração padrão") |
 
 ### Autenticação
 
@@ -104,6 +111,14 @@ O PIN tem exatamente 4 números, como define o projeto, e é guardado em bcrypt 
 O papel do PIN é o descrito no projeto: impedir o acesso acidental da criança às configurações. A proteção dos dados continua sendo o token de acesso, exigido em todas as rotas do responsável. Por isso a verificação do PIN não emite um segundo token: o aplicativo confere o PIN na API e libera a navegação para a área restrita.
 
 Com só 10 mil combinações possíveis, o PIN depende de limite de tentativas. A verificação e a troca aceitam 5 erros a cada 15 minutos por responsável, contados pela conta e não pelo endereço de origem, e os acertos não entram na conta. PIN ou senha errados respondem `403`, diferente do `401` de token inválido, para o aplicativo saber quando mostrar "PIN incorreto" e quando mandar o responsável de volta para o login.
+
+### Crianças e configuração
+
+Toda consulta de criança filtra pelo responsável do token, inclusive nas atualizações e na exclusão. Uma criança de outra família responde `404`, exatamente como uma que não existe, para que a API não confirme a existência de dados alheios.
+
+A criança e a configuração dela são criadas em um único comando SQL, então nunca existe criança sem configuração, e a resposta já traz as duas. Os valores padrão (teto de 50% do volume e sessão de 5 minutos) ficam no próprio banco, como `DEFAULT` das colunas: a criação usa esses valores e o "Retornar a configuração padrão" do protótipo volta a eles sem que o código precise repetir os números. O padrão começa pelo tempo mais curto e pela metade do volume porque a dessensibilização parte de estímulos baixos e curtos; o responsável ajusta a partir daí.
+
+A criança tem apenas nome, como na Figura 1 do projeto. Idade e observações, que existiam no cadastro da fase com PocketBase, não fazem parte do modelo e saem do aplicativo quando a área do responsável passar a usar a API. O volume máximo é guardado de 1 a 100; a conversão para a escala de 0 a 1 do controle deslizante fica no aplicativo.
 
 ### Acesso ao banco
 
@@ -178,6 +193,7 @@ As regras de negócio que não podem depender só do aplicativo ficam no própri
 | Teto de volume entre 1% e 100% | `CHECK (volume_maximo BETWEEN 1 AND 100)` |
 | Um e-mail por responsável | `UNIQUE (email)` |
 | Cada criança tem uma única configuração | `crianca_id` é a chave primária de `configuracao` |
+| Configuração padrão de 50% e 5 minutos | `DEFAULT` nas colunas de `configuracao` |
 | Um registro de progresso por cenário | chave primária composta `(crianca_id, cenario)` |
 | Dados da criança somem junto com a conta | `ON DELETE CASCADE` em todas as chaves estrangeiras |
 
@@ -214,8 +230,9 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Rotas de crianças e de configuração, com acesso restrito ao responsável dono dos dados.
-- Rotas de histórico de sessões e de progresso na trilha, alimentando a utilização semanal.
-- Troca do PocketBase pela API no aplicativo, com as telas de criação e de digitação do PIN, e remoção do backend provisório.
-- Sistema de recompensas visuais.
+- Troca do PocketBase pela API no aplicativo, com as telas de criação e de digitação do PIN, o bloqueio da trilha antes do login e a remoção do backend provisório.
+- Rotas de histórico de sessões e de progresso na trilha, alimentando a utilização semanal a partir do banco.
+- Controle do tempo de sessão durante a reprodução, com aviso suave quando o tempo acaba.
+- Sistema de recompensas visuais ao cumprir a meta da sessão.
+- Suavização progressiva do volume no início de cada som.
 - Substituição dos áudios reservados por sons reais, em versão normal e suave.
