@@ -83,6 +83,9 @@ O código segue três camadas por assunto: a rota recebe a requisição e valida
 | `POST /auth/cadastro` | livre | Cria a conta do responsável com nome, e-mail e senha |
 | `POST /auth/login` | livre | Confere e-mail e senha e devolve o token de acesso |
 | `GET /auth/perfil` | token | Devolve os dados do responsável dono do token |
+| `POST /auth/pin` | token | Cria o PIN da área restrita, uma única vez |
+| `POST /auth/pin/verificar` | token | Confere o PIN digitado para liberar a área restrita |
+| `PUT /auth/pin` | token | Troca o PIN mediante a senha da conta ("Esqueceu o PIN?") |
 
 ### Autenticação
 
@@ -90,9 +93,17 @@ O cadastro recebe nome, e-mail e senha, validados com Zod antes de qualquer aces
 
 O login devolve um token JWT assinado com HS256, válido por 7 dias, que o aplicativo envia no cabeçalho `Authorization: Bearer`. Senha errada e e-mail inexistente recebem exatamente a mesma resposta, e o servidor faz a comparação do bcrypt mesmo quando o e-mail não existe, para que o tempo de resposta também não denuncie quais e-mails têm conta. Cadastro e login aceitam até 10 tentativas a cada 15 minutos por endereço de origem, o que inviabiliza testar senhas em massa.
 
+No cadastro, a API responde `409` quando o e-mail já existe. Isso revela que aquele e-mail tem conta, mas a alternativa, fingir sucesso, só funciona com confirmação por e-mail, que está fora do escopo do MVP.
+
+### PIN da área restrita
+
 O PIN não faz parte do cadastro. Pelo fluxo do aplicativo, o responsável cria a conta, entra e só então define o PIN da área restrita, então `pin_hash` passou a aceitar valor nulo (migração `002`). As respostas da API trazem o campo `pinCadastrado`, que indica ao aplicativo quando levar o responsável para a tela de criação do PIN.
 
-No cadastro, a API responde `409` quando o e-mail já existe. Isso revela que aquele e-mail tem conta, mas a alternativa, fingir sucesso, só funciona com confirmação por e-mail, que está fora do escopo do MVP.
+O PIN tem exatamente 4 números, como define o projeto, e é guardado em bcrypt como a senha. Ele é criado uma única vez pela rota `POST /auth/pin`; depois disso, a única forma de trocá-lo é pelo "Esqueceu o PIN?" da tela, que pede a senha da conta. Assim uma criança com o aparelho na mão não consegue redefinir o PIN, porque não sabe a senha.
+
+O papel do PIN é o descrito no projeto: impedir o acesso acidental da criança às configurações. A proteção dos dados continua sendo o token de acesso, exigido em todas as rotas do responsável. Por isso a verificação do PIN não emite um segundo token: o aplicativo confere o PIN na API e libera a navegação para a área restrita.
+
+Com só 10 mil combinações possíveis, o PIN depende de limite de tentativas. A verificação e a troca aceitam 5 erros a cada 15 minutos por responsável, contados pela conta e não pelo endereço de origem, e os acertos não entram na conta. PIN ou senha errados respondem `403`, diferente do `401` de token inválido, para o aplicativo saber quando mostrar "PIN incorreto" e quando mandar o responsável de volta para o login.
 
 ### Acesso ao banco
 
@@ -182,6 +193,7 @@ Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `c
 - **Teto de volume aplicado na reprodução**: o limite configurado pelo responsável restringe o próprio controle exibido à criança, em vez de apenas validar o valor no momento de salvar. A proteção precisa valer no ponto de uso, não só no cadastro.
 - **Consultas parametrizadas**: nenhuma consulta monta SQL concatenando entrada do usuário.
 - **Senhas com hash e login sem pistas**: senhas ficam em bcrypt, o login responde igual para senha errada e e-mail inexistente e as tentativas são limitadas por endereço de origem.
+- **PIN protegido contra tentativa e erro**: o PIN fica em bcrypt, aceita 5 erros a cada 15 minutos por conta e só pode ser trocado com a senha.
 - **Token com algoritmo fixo**: a verificação do JWT aceita apenas HS256, e o segredo de assinatura vem de variável de ambiente.
 - **Erros sem detalhes internos**: a API nunca devolve pilha de execução, nome de tabela ou mensagem do banco para o cliente.
 - **Nenhum segredo no repositório**: URLs, usuário e senha do banco vêm de variáveis de ambiente, e os arquivos `.env` estão fora do versionamento. Os `.env.example` documentam as chaves esperadas sem expor valores reais.
@@ -191,6 +203,8 @@ Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `c
 
 - O token fica em armazenamento comum do dispositivo, sem criptografia. Para o escopo do trabalho é aceitável, mas o caminho natural é migrar para armazenamento seguro (Keychain/Keystore).
 - Os formulários do aplicativo ainda validam entradas de forma pontual. Na API, cada rota vai validar o corpo da requisição antes de chegar ao banco.
+- Um PIN de 4 números em bcrypt pode ser descoberto por força bruta se alguém obtiver uma cópia do banco, já que são só 10 mil combinações. A proteção real do PIN é o limite de tentativas na API; o tamanho segue o projeto, que prioriza a facilidade de uso pelo responsável.
+- O limite de tentativas fica na memória do processo da API e zera quando ela reinicia. Com uma única instância, como no MVP, isso é suficiente.
 
 ## Testes
 
@@ -200,9 +214,8 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- PIN numérico da área restrita, criado no primeiro acesso depois do cadastro, com a tela correspondente no aplicativo.
 - Rotas de crianças e de configuração, com acesso restrito ao responsável dono dos dados.
 - Rotas de histórico de sessões e de progresso na trilha, alimentando a utilização semanal.
-- Troca do PocketBase pela API no aplicativo e remoção do backend provisório.
+- Troca do PocketBase pela API no aplicativo, com as telas de criação e de digitação do PIN, e remoção do backend provisório.
 - Sistema de recompensas visuais.
 - Substituição dos áudios reservados por sons reais, em versão normal e suave.

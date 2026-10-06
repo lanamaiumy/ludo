@@ -1,21 +1,12 @@
 import { Router } from 'express';
-import { rateLimit } from 'express-rate-limit';
 import { authenticate } from '../middlewares/authenticate';
+import { limitAttemptsByOrigin } from '../middlewares/rateLimiters';
 import type { AuthService } from '../services/authService';
 import { cadastroSchema, loginSchema } from '../validators/authSchemas';
 
-const FIFTEEN_MINUTES = 15 * 60 * 1000;
-
 export function authRoutes(service: AuthService, jwtSecret: string): Router {
   const router = Router();
-
-  const attemptsLimiter = rateLimit({
-    windowMs: FIFTEEN_MINUTES,
-    limit: 10,
-    standardHeaders: 'draft-8',
-    legacyHeaders: false,
-    message: { mensagem: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' },
-  });
+  const attemptsLimiter = limitAttemptsByOrigin();
 
   router.post('/cadastro', attemptsLimiter, async (request, response) => {
     const data = cadastroSchema.parse(request.body);

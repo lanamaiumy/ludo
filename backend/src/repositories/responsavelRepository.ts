@@ -42,6 +42,14 @@ export function createResponsavelRepository(db: Database) {
       );
       return rows[0];
     },
+
+    async updatePinHash(id: string, pinHash: string): Promise<Responsavel> {
+      const { rows } = await db.query<Responsavel>(
+        `UPDATE responsavel SET pin_hash = $2 WHERE id = $1 RETURNING ${COLUMNS}`,
+        [id, pinHash],
+      );
+      return rows[0];
+    },
   };
 }
 
