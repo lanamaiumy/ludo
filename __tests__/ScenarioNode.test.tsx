@@ -24,8 +24,13 @@ function renderNode(status: ScenarioStatus) {
 
 describe('ScenarioNode', () => {
   it('renderiza o nome do cenário', () => {
-    const { getByText } = renderNode('unlocked');
+    const { getByText } = renderNode('completed');
     expect(getByText('Quarto')).toBeTruthy();
+  });
+
+  it('quando é o cenário atual, destaca o nome na etiqueta', () => {
+    const { getByText } = renderNode('unlocked');
+    expect(getByText('Cenário: Quarto')).toBeTruthy();
   });
 
   it('quando bloqueado, mostra o badge de cadeado', () => {

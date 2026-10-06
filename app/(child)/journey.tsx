@@ -5,7 +5,6 @@ import { Text, TouchableRipple } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // componentes
 import GradientBackground from '../../components/GradientBackground';
-import ScenarioNode from '../../components/ScenarioNode';
 import JourneyTrail from '../../components/JourneyTrail';
 // scenarios e contexto (useProgress())
 // os scenarios funcionam como objetos pré-definidos na aplicação, os scenarios são concluidos
@@ -65,12 +64,7 @@ export default function JourneyScreen() {
           contentContainerStyle={styles.trail}
           showsVerticalScrollIndicator={false}
         >
-          {display.map((scenario, index) => (
-            <View key={scenario.id} style={styles.nodeWrapper}>
-              <ScenarioNode scenario={scenario} onPress={() => openExercise(scenario)} />
-              {index < display.length - 1 && <JourneyTrail />}
-            </View>
-          ))}
+          <JourneyTrail scenarios={display} onSelect={openExercise} />
         </ScrollView>
       </SafeAreaView>
 
@@ -109,9 +103,6 @@ const styles = StyleSheet.create({
   trail: {
     alignItems: 'center',
     paddingVertical: 28,
-  },
-  nodeWrapper: {
-    alignItems: 'center',
   },
   tabBarSafe: {
     backgroundColor: '#FFFFFF',
