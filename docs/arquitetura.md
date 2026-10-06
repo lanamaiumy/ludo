@@ -4,7 +4,7 @@ Este documento registra como o Ludo está organizado e por que cada escolha foi 
 
 ## Visão geral
 
-O Ludo é um aplicativo React Native com Expo que funciona principalmente offline e usa um backend leve apenas para autenticar o responsável e guardar as configurações da criança. A divisão é intencional: a sessão de dessensibilização acontece em casa, muitas vezes sem conexão confiável, então nada essencial à reprodução dos sons pode depender da rede.
+O Ludo é composto por um aplicativo React Native com Expo e por uma API REST própria em Node.js com TypeScript, que persiste os dados em PostgreSQL. Essa é a arquitetura definida no capítulo 4.4 do projeto do TCC: a API autentica o responsável, guarda as configurações de cada criança e registra o histórico de sessões e o progresso na trilha, e toda a retaguarda roda em contêineres Docker. Os sons continuam embarcados no aplicativo, então a reprodução em si não depende de rede.
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -15,15 +15,23 @@ O Ludo é um aplicativo React Native com Expo que funciona principalmente offlin
 │         Contexts (Auth, Progress)           │
 ├──────────────────────┬──────────────────────┤
 │  AsyncStorageHelper  │      api (axios)     │
-│  progresso, sessões  │  token, perfil,      │
-│  e sessão persistida │  configurações       │
-├──────────────────────┼──────────────────────┤
-│   Armazenamento do   │      PocketBase      │
-│     dispositivo      │  users │ children    │
-└──────────────────────┴──────────────────────┘
+│  token e progresso   │   token no cabeçalho │
+└──────────────────────┴───────────┬──────────┘
+                                   │ HTTP + JSON
+┌──────────────────────────────────▼──────────┐
+│        API REST (Node.js + Express)         │
+│   rotas │ middlewares │ acesso ao banco     │
+├─────────────────────────────────────────────┤
+│                 PostgreSQL                  │
+│  responsavel │ crianca │ configuracao       │
+│  historico_sessao │ progresso_trilha        │
+└─────────────────────────────────────────────┘
+          orquestrados com Docker Compose
 ```
 
-## Camadas
+A primeira fase do desenvolvimento usou o PocketBase como backend provisório, para que a área do responsável pudesse ser construída antes da API. Ele ainda atende o aplicativo enquanto a API ganha as rotas de autenticação, crianças, configurações, histórico e progresso; a troca acontece em etapas, listadas ao final deste documento.
+
+## Aplicativo
 
 ### Rotas (`app/`)
 
@@ -38,8 +46,8 @@ A separação em grupos não é só organizacional: ela cria a fronteira natural
 
 O estado compartilhado fica em dois contextos, cada um com uma responsabilidade única:
 
-- **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app e expõe `login` e `logout`. A resposta do PocketBase chega em `snake_case` e é convertida para o formato interno em `camelCase` por uma função de mapeamento, isolando o resto do app do formato do backend.
-- **`ProgressContext`**: mantém os cenários concluídos e a utilização semanal, derivada do histórico local de sessões.
+- **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app e expõe `login` e `logout`. A resposta do backend chega em `snake_case` e é convertida para o formato interno em `camelCase` por uma função de mapeamento, isolando o resto do app do formato do servidor.
+- **`ProgressContext`**: mantém os cenários concluídos e a utilização semanal, derivada do histórico de sessões.
 
 A escolha pela Context API, e não por uma biblioteca de estado global, é proporcional ao problema: são dois domínios de estado, com poucas atualizações e sem necessidade de seletores ou memoização fina. Adotar uma solução maior aqui traria configuração sem benefício.
 
@@ -49,83 +57,127 @@ O acesso ao Async Storage é centralizado em um helper tipado, com funções par
 
 ### Comunicação com o backend (`src/services/api.ts`)
 
-Uma única instância do Axios concentra a comunicação com o PocketBase. A URL base vem de `EXPO_PUBLIC_API_URL`, nunca fixada no código, e um interceptador de requisição injeta o token de autenticação automaticamente. Assim nenhuma tela precisa lembrar de enviar credenciais, e trocar de ambiente (local, homologação) é questão de variável de ambiente.
+Uma única instância do Axios concentra a comunicação com o servidor. A URL base vem de `EXPO_PUBLIC_API_URL`, nunca fixada no código, e um interceptador de requisição injeta o token de autenticação automaticamente. Assim nenhuma tela precisa lembrar de enviar credenciais, e apontar o app para a nova API é questão de trocar a variável de ambiente e os caminhos das rotas.
 
 ### Catálogo de cenários (`src/data/scenarios.ts`)
 
 Os cenários e seus sons são declarados como dados estáticos, com os arquivos de áudio resolvidos por `require` para entrarem no bundle do aplicativo. Cada som tem uma versão normal e uma suave, o que sustenta o modo suave sem lógica de processamento de áudio em tempo de execução. Manter isso como dado, e não espalhado em componentes, permite adicionar um cenário novo alterando um arquivo só.
 
+## Backend (`backend/`)
+
+### API
+
+A API usa Express com TypeScript. O ponto de entrada é a função `createApp(db)`, que monta a aplicação recebendo o acesso ao banco como parâmetro em vez de importá-lo diretamente. Com isso os testes sobem a API inteira com um banco simulado, sem precisar de PostgreSQL rodando, e o `server.ts` fica responsável apenas por ligar a aplicação ao banco real e abrir a porta.
+
+O corpo das requisições é limitado a 10 KB, já que nenhuma rota do Ludo recebe arquivos, e o cabeçalho `X-Powered-By` é desligado para não anunciar a tecnologia do servidor. Erros passam por um tratador único que responde com mensagens genéricas: JSON malformado vira `400`, rota inexistente vira `404` e qualquer falha inesperada vira `500`, sem expor pilha de execução ou detalhes do banco para o cliente.
+
+A rota `GET /health` executa uma consulta mínima no banco e responde `200` quando a conexão está de pé ou `503` quando não está. Ela serve para o Docker, para os testes e para quem estiver depurando a integração com o app.
+
+### Acesso ao banco
+
+O acesso ao PostgreSQL é feito com o driver `pg`, sem ORM. O modelo de dados do projeto já está descrito em SQL, com tipos, chaves e restrições, e um ORM exigiria traduzi-lo para outra linguagem de esquema, em que restrições como `CHECK (tempo_sessao_minutos IN (5, 10))` não têm representação direta. Com SQL puro, a migração é o próprio modelo do documento. Todas as consultas usam parâmetros (`$1`, `$2`), nunca concatenação de texto, o que fecha a porta para injeção de SQL.
+
+O pool de conexões escuta o próprio evento de erro. Sem isso, quando o banco reinicia e derruba uma conexão ociosa, o Node encerra o processo inteiro da API; com o tratamento, a API registra a perda, responde `503` enquanto o banco está fora e volta a funcionar sozinha quando ele retorna.
+
+### Migrações
+
+As migrações são arquivos `.sql` numerados em `backend/migrations/`, aplicados em ordem pelo comando `npm run migrate`. Cada arquivo roda dentro de uma transação e, quando termina, é registrado na tabela `migracoes`; se algo falhar no meio, nada daquele arquivo fica aplicado. Rodar o comando de novo só aplica o que ainda não foi aplicado, então ele é seguro para executar a cada inicialização do contêiner.
+
+A escolha por um executor próprio, de poucas linhas, em vez de uma biblioteca de migrações, foi pela transparência: o mecanismo inteiro cabe em um arquivo que pode ser lido e explicado na defesa.
+
+### Contêineres
+
+O `docker-compose.yml` sobe dois serviços: o PostgreSQL 17 e a API. O banco tem verificação de saúde (`pg_isready`), e a API só inicia depois que ele está pronto para receber conexões. Ao subir, o contêiner da API aplica as migrações pendentes e então inicia o servidor. A imagem da API é construída em duas etapas: a primeira instala tudo e compila o TypeScript, a segunda leva apenas o JavaScript compilado e as dependências de produção, e roda com usuário sem privilégios.
+
 ## Modelo de dados
 
-A persistência é híbrida, e a divisão segue o critério de quem precisa do dado e quando:
-
-| Dado | Onde vive | Por quê |
-|---|---|---|
-| Credenciais e perfil do responsável | PocketBase (`users`) | Precisa de autenticação real e sobreviver à troca de aparelho |
-| Cadastro da criança | PocketBase (`children`) | Vinculado à conta do responsável, com regra de acesso por dono |
-| Token de sessão | Armazenamento do dispositivo | Evita novo login a cada abertura |
-| Cenários concluídos | Armazenamento do dispositivo | Consultado a cada abertura da trilha, inclusive offline |
-| Histórico de sessões | Armazenamento do dispositivo | Alimenta a utilização semanal sem depender de rede |
+O modelo segue a modelagem relacional do capítulo 6.2 do projeto do TCC e está implementado em `backend/migrations/001_cria_tabelas_iniciais.sql`.
 
 ```mermaid
 erDiagram
-    USERS ||--o{ CHILDREN : possui
-    CHILDREN ||--o{ HISTORICO_SESSAO : registra
-    CHILDREN ||--o{ PROGRESSO_TRILHA : avanca
+    RESPONSAVEL ||--o{ CRIANCA : possui
+    CRIANCA ||--|| CONFIGURACAO : tem
+    CRIANCA ||--o{ HISTORICO_SESSAO : registra
+    CRIANCA ||--o{ PROGRESSO_TRILHA : avanca
 
-    USERS {
-        string id PK
-        string email UK
-        string name
-        string child_name
-        int max_volume
-        int session_time
+    RESPONSAVEL {
+        uuid id PK
+        varchar nome
+        varchar email UK
+        varchar senha_hash
+        varchar pin_hash
+        timestamp criado_em
     }
 
-    CHILDREN {
-        string id PK
-        string user_id FK
-        string name
-        int age
-        string notes
+    CRIANCA {
+        uuid id PK
+        uuid responsavel_id FK
+        varchar nome
+        timestamp criado_em
+    }
+
+    CONFIGURACAO {
+        uuid crianca_id PK, FK
+        int volume_maximo
+        int tempo_sessao_minutos
+        timestamp atualizado_em
     }
 
     HISTORICO_SESSAO {
-        string id PK
+        uuid id PK
+        uuid crianca_id FK
         date data_sessao
-        string cenario
-        string som
         boolean concluida
-        boolean modo_suave
+        timestamp criado_em
     }
 
     PROGRESSO_TRILHA {
-        string cenario PK
-        boolean concluido
+        uuid crianca_id PK, FK
+        varchar cenario PK
+        boolean desbloqueado
     }
 ```
 
-`USERS` e `CHILDREN` residem no PocketBase, criadas pelas migrações em `pb_migrations/`. `HISTORICO_SESSAO` e `PROGRESSO_TRILHA` hoje vivem no armazenamento local em formato de chave-valor e serão migradas para SQLite, quando o volume de registros passar a exigir consulta por período.
+As regras de negócio que não podem depender só do aplicativo ficam no próprio banco:
+
+| Regra | Como o banco garante |
+|---|---|
+| Tempo de sessão só pode ser 5 ou 10 minutos | `CHECK (tempo_sessao_minutos IN (5, 10))` |
+| Teto de volume entre 1% e 100% | `CHECK (volume_maximo BETWEEN 1 AND 100)` |
+| Um e-mail por responsável | `UNIQUE (email)` |
+| Cada criança tem uma única configuração | `crianca_id` é a chave primária de `configuracao` |
+| Um registro de progresso por cenário | chave primária composta `(crianca_id, cenario)` |
+| Dados da criança somem junto com a conta | `ON DELETE CASCADE` em todas as chaves estrangeiras |
+
+Senha e PIN são guardados apenas como hash; o texto original nunca chega ao banco. As consultas mais frequentes, crianças de um responsável e sessões de uma criança por período, têm índices próprios.
+
+Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `children` do PocketBase e guarda o histórico e o progresso no Async Storage. Essas informações passam para as tabelas acima conforme cada rota da API fica pronta.
 
 ## Decisões de segurança
 
-- **Regras de acesso por dono no PocketBase**: a coleção `children` só permite leitura e escrita ao usuário autenticado que a criou, impedindo que um token válido acesse dados de outra família.
-- **Nenhum segredo no repositório**: a URL da API vem de variável de ambiente e o `.env` está fora do versionamento. O `.env.example` documenta as chaves esperadas sem expor valores.
-- **Banco local fora do versionamento**: `pb_data/` e o executável do PocketBase são ignorados, para que dados de teste com e-mails reais não acabem no histórico do Git.
+- **Restrições no banco, não só na tela**: o teto de volume e o tempo de sessão são validados pelo PostgreSQL. Mesmo que uma requisição chegue à API com valores fora da regra, o banco recusa a gravação.
 - **Teto de volume aplicado na reprodução**: o limite configurado pelo responsável restringe o próprio controle exibido à criança, em vez de apenas validar o valor no momento de salvar. A proteção precisa valer no ponto de uso, não só no cadastro.
+- **Consultas parametrizadas**: nenhuma consulta monta SQL concatenando entrada do usuário.
+- **Erros sem detalhes internos**: a API nunca devolve pilha de execução, nome de tabela ou mensagem do banco para o cliente.
+- **Nenhum segredo no repositório**: URLs, usuário e senha do banco vêm de variáveis de ambiente, e os arquivos `.env` estão fora do versionamento. Os `.env.example` documentam as chaves esperadas sem expor valores reais.
+- **Dados locais fora do versionamento**: `pb_data/`, o executável do PocketBase e o volume do PostgreSQL ficam fora do Git, para que dados de teste com e-mails reais não acabem no histórico.
 
 ### Limitações reconhecidas
 
 - O token fica em armazenamento comum do dispositivo, sem criptografia. Para o escopo do trabalho é aceitável, mas o caminho natural é migrar para armazenamento seguro (Keychain/Keystore).
-- Os formulários ainda validam entradas de forma pontual. A adoção do Zod, já planejada, dará um esquema único de validação para login, cadastro e configurações.
+- Os formulários do aplicativo ainda validam entradas de forma pontual. Na API, cada rota vai validar o corpo da requisição antes de chegar ao banco.
 
 ## Testes
 
-Os testes usam Jest com o preset `jest-expo` e a Testing Library, concentrados nos componentes de interface com regra de negócio visível: o campo com rótulo, o nó da trilha e a visualização semanal. A prioridade foi cobrir o que o usuário enxerga e onde um erro passaria despercebido, em vez de perseguir cobertura numérica.
+No aplicativo, os testes usam Jest com o preset `jest-expo` e a Testing Library, concentrados nos componentes de interface com regra de negócio visível: o campo com rótulo, o nó da trilha e a visualização semanal. A prioridade foi cobrir o que o usuário enxerga e onde um erro passaria despercebido, em vez de perseguir cobertura numérica.
+
+Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, que faz requisições HTTP reais contra a aplicação montada em memória. Os dois projetos têm configurações separadas, e o Jest do aplicativo ignora a pasta `backend/`.
 
 ## O que ainda vai mudar
 
-- Migração do progresso e do histórico para SQLite.
-- Validação de formulários com Zod.
-- Unificação da estilização com NativeWind.
+- Autenticação do responsável na API: cadastro, login com token e PIN numérico para a área restrita.
+- Rotas de crianças e de configuração, com acesso restrito ao responsável dono dos dados.
+- Rotas de histórico de sessões e de progresso na trilha, alimentando a utilização semanal.
+- Troca do PocketBase pela API no aplicativo e remoção do backend provisório.
+- Sistema de recompensas visuais.
 - Substituição dos áudios reservados por sons reais, em versão normal e suave.
