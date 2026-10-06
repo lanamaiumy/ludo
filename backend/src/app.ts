@@ -4,7 +4,9 @@ import { errorHandler, notFound } from './middlewares/errorHandler';
 import { createResponsavelRepository } from './repositories/responsavelRepository';
 import { authRoutes } from './routes/auth';
 import { healthRoutes } from './routes/health';
+import { pinRoutes } from './routes/pin';
 import { createAuthService } from './services/authService';
+import { createPinService } from './services/pinService';
 
 type AppDependencies = {
   db: Database;
@@ -17,9 +19,12 @@ export function createApp({ db, jwtSecret }: AppDependencies) {
   app.disable('x-powered-by');
   app.use(express.json({ limit: '10kb' }));
 
-  const authService = createAuthService(createResponsavelRepository(db), jwtSecret);
+  const responsavelRepository = createResponsavelRepository(db);
+  const authService = createAuthService(responsavelRepository, jwtSecret);
+  const pinService = createPinService(responsavelRepository);
 
   app.use('/health', healthRoutes(db));
+  app.use('/auth/pin', pinRoutes(pinService, jwtSecret));
   app.use('/auth', authRoutes(authService, jwtSecret));
 
   app.use(notFound);
