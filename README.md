@@ -38,11 +38,13 @@ O Ludo atende dois perfis complementares:
 | Interface | React Native Paper |
 | Estado | Context API (`AuthContext`, `ProgressContext`) |
 | Áudio | expo-av |
-| Persistência local | Async Storage (SQLite previsto) |
-| Backend | PocketBase (autenticação e coleções `users` e `children`) |
-| Testes | Jest com jest-expo e Testing Library |
+| Persistência local | Async Storage |
+| API | REST em Node.js com TypeScript e Express |
+| Banco de dados | PostgreSQL |
+| Infraestrutura | Docker e Docker Compose |
+| Testes | Jest com jest-expo e Testing Library no app, `node:test` com Supertest na API |
 
-As decisões por trás dessas escolhas estão registradas em [docs/arquitetura.md](docs/arquitetura.md).
+A stack segue o capítulo 4.4 do projeto do TCC. Durante a primeira fase, o PocketBase foi usado como backend provisório da área do responsável e continua ativo até o aplicativo passar a consumir a API. As decisões por trás dessas escolhas estão registradas em [docs/arquitetura.md](docs/arquitetura.md).
 
 ## Estrutura do repositório
 
@@ -52,17 +54,43 @@ components/     componentes de interface reutilizáveis
 src/contexts/   estado compartilhado de autenticação e progresso
 src/data/       definição dos cenários e dos sons de cada etapa
 src/helpers/    utilitários de armazenamento local e notificações
-src/services/   cliente HTTP e integração com o PocketBase
+src/services/   cliente HTTP do aplicativo
 src/types/      contratos de dados da aplicação
 assets/sounds/  áudios por cenário, em versão normal e suave
-pb_migrations/  migrações das coleções do PocketBase
+pb_migrations/  migrações das coleções do PocketBase (provisório)
 __tests__/      testes de componentes
 docs/           documentação do projeto
+
+backend/
+  src/          API REST: aplicação, rotas, middlewares e acesso ao banco
+  migrations/   migrações SQL do PostgreSQL, aplicadas em ordem
+  tests/        testes da API
 ```
 
 ## Como rodar
 
-**Pré-requisitos**: Node.js 20 ou superior, Expo Go no celular (ou um emulador Android/iOS) e o executável do PocketBase para a área do responsável.
+**Pré-requisitos**: Node.js 20 ou superior, Docker com Docker Compose e Expo Go no celular (ou um emulador Android/iOS).
+
+### API e banco de dados
+
+```
+cd backend
+cp .env.example .env
+docker compose up --build
+```
+
+O Compose sobe o PostgreSQL e a API, aplica as migrações pendentes e deixa a API em http://localhost:3333. Para conferir se está tudo de pé, acesse http://localhost:3333/health.
+
+Para desenvolver a API fora do contêiner, com recarga automática, suba só o banco e rode a API pelo Node:
+
+```
+docker compose up -d db
+npm install
+npm run migrate
+npm run dev
+```
+
+### Aplicativo
 
 ```
 npm install
@@ -70,20 +98,15 @@ cp .env.example .env
 npm start
 ```
 
-Ajuste `EXPO_PUBLIC_API_URL` no `.env` para o endereço do seu PocketBase e abra o QR Code no Expo Go, ou rode `npm run android` / `npm run ios`.
+Ajuste `EXPO_PUBLIC_API_URL` no `.env` e abra o QR Code no Expo Go, ou rode `npm run android` / `npm run ios`.
 
-Para subir o backend local, baixe o executável em https://pocketbase.io/docs/ na raiz do projeto (ele é ignorado pelo versionamento) e inicie:
+Enquanto a troca para a API não termina, a área do responsável ainda usa o PocketBase. Para subi-lo, baixe o executável em https://pocketbase.io/docs/ na raiz do projeto (ele é ignorado pelo versionamento) e rode `./pocketbase serve`; as coleções são criadas pelas migrações em `pb_migrations/`.
 
-```
-./pocketbase serve
-```
-
-O painel fica em http://127.0.0.1:8090/_/ e as coleções são criadas automaticamente pelas migrações em `pb_migrations/`.
-
-Para rodar os testes:
+### Testes
 
 ```
 npm test
+cd backend && npm test
 ```
 
 ## Documentação
@@ -95,7 +118,7 @@ npm test
 
 A base funcional já cobre a autenticação do responsável, a trilha de cenários com bloqueio por etapa, o player com teto de volume e modo suave, e a visualização da utilização semanal. Os áudios em `assets/sounds/` ainda são arquivos reservados e serão substituídos por sons reais, em versão normal e suave para cada cenário.
 
-Os próximos passos concentram-se na persistência local com SQLite, na validação de formulários com Zod e no sistema de recompensas visuais.
+A API já tem a estrutura base, com o banco PostgreSQL modelado conforme o projeto do TCC e orquestrado em Docker. Os próximos passos concentram-se nas rotas da API (autenticação do responsável com PIN, crianças e configurações, histórico de sessões e progresso), na troca do PocketBase pela API no aplicativo e no sistema de recompensas visuais.
 
 ## Projeto relacionado
 
