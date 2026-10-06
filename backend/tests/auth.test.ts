@@ -4,25 +4,13 @@ import type { Express } from 'express';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { createApp } from '../src/app';
+import { registerAndLogin, validRegistration } from './helpers/session';
 import { createTestDatabase, type TestDatabase } from './helpers/testDatabase';
 
 const JWT_SECRET = 'segredo-de-teste';
-const validRegistration = {
-  nome: 'Juliana Souza',
-  email: 'juliana@exemplo.com',
-  senha: 'senha-segura-123',
-};
 
 let database: TestDatabase;
 let app: Express;
-
-async function registerAndLogin() {
-  await request(app).post('/auth/cadastro').send(validRegistration);
-  const response = await request(app)
-    .post('/auth/login')
-    .send({ email: validRegistration.email, senha: validRegistration.senha });
-  return response.body as { token: string; responsavel: { id: string } };
-}
 
 before(async () => {
   database = await createTestDatabase();
@@ -85,7 +73,7 @@ describe('POST /auth/cadastro', () => {
 
 describe('POST /auth/login', () => {
   it('devolve um token assinado para o responsável', async () => {
-    const { token, responsavel } = await registerAndLogin();
+    const { token, responsavel } = await registerAndLogin(app);
 
     const payload = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
 
@@ -123,7 +111,7 @@ describe('POST /auth/login', () => {
 
 describe('GET /auth/perfil', () => {
   it('devolve o responsável dono do token', async () => {
-    const { token } = await registerAndLogin();
+    const { token } = await registerAndLogin(app);
 
     const response = await request(app).get('/auth/perfil').set('Authorization', `Bearer ${token}`);
 
@@ -139,7 +127,7 @@ describe('GET /auth/perfil', () => {
   });
 
   it('recusa token assinado com outro segredo ou expirado', async () => {
-    const { responsavel } = await registerAndLogin();
+    const { responsavel } = await registerAndLogin(app);
     const forged = jwt.sign({}, 'outro-segredo', { subject: responsavel.id });
     const expired = jwt.sign({}, JWT_SECRET, { subject: responsavel.id, expiresIn: -10 });
 
