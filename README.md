@@ -79,7 +79,7 @@ cp .env.example .env
 docker compose up --build
 ```
 
-O Compose sobe o PostgreSQL e a API, aplica as migrações pendentes e deixa a API em http://localhost:3333. Para conferir se está tudo de pé, acesse http://localhost:3333/health.
+Antes de subir, troque no `.env` a senha do banco e o `JWT_SECRET` (um valor aleatório gerado com `openssl rand -hex 32`). O Compose sobe o PostgreSQL e a API, aplica as migrações pendentes e deixa a API em http://localhost:3333. Para conferir se está tudo de pé, acesse http://localhost:3333/health.
 
 Para desenvolver a API fora do contêiner, com recarga automática, suba só o banco e rode a API pelo Node:
 
@@ -118,7 +118,7 @@ cd backend && npm test
 
 A base funcional já cobre a autenticação do responsável, a trilha de cenários com bloqueio por etapa, o player com teto de volume e modo suave, e a visualização da utilização semanal. Os áudios em `assets/sounds/` ainda são arquivos reservados e serão substituídos por sons reais, em versão normal e suave para cada cenário.
 
-A API já tem a estrutura base, com o banco PostgreSQL modelado conforme o projeto do TCC e orquestrado em Docker. Os próximos passos concentram-se nas rotas da API (autenticação do responsável com PIN, crianças e configurações, histórico de sessões e progresso), na troca do PocketBase pela API no aplicativo e no sistema de recompensas visuais.
+A API já tem o banco PostgreSQL modelado conforme o projeto do TCC, orquestrado em Docker, e as rotas de cadastro, login e perfil do responsável. Os próximos passos concentram-se no PIN da área restrita, nas rotas de crianças e configurações, histórico de sessões e progresso, na troca do PocketBase pela API no aplicativo e no sistema de recompensas visuais.
 
 ## Projeto relacionado
 
