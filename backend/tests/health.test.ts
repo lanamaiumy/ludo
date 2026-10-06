@@ -4,13 +4,14 @@ import request from 'supertest';
 import { createApp } from '../src/app';
 import type { Database } from '../src/database/types';
 
-function fakeDatabase(query: () => Promise<unknown>): Database {
-  return { query } as unknown as Database;
+function appWithDatabase(query: () => Promise<unknown>) {
+  const db = { query } as unknown as Database;
+  return createApp({ db, jwtSecret: 'segredo-de-teste' });
 }
 
 describe('GET /health', () => {
   it('responde 200 quando o banco está acessível', async () => {
-    const app = createApp(fakeDatabase(async () => ({ rows: [] })));
+    const app = appWithDatabase(async () => ({ rows: [] }));
 
     const response = await request(app).get('/health');
 
@@ -19,9 +20,9 @@ describe('GET /health', () => {
   });
 
   it('responde 503 quando o banco não responde', async () => {
-    const app = createApp(fakeDatabase(async () => {
+    const app = appWithDatabase(async () => {
       throw new Error('conexão recusada');
-    }));
+    });
 
     const response = await request(app).get('/health');
 
@@ -31,7 +32,7 @@ describe('GET /health', () => {
 });
 
 describe('tratamento de erros', () => {
-  const app = createApp(fakeDatabase(async () => ({ rows: [] })));
+  const app = appWithDatabase(async () => ({ rows: [] }));
 
   it('responde 404 para rota inexistente', async () => {
     const response = await request(app).get('/rota-que-nao-existe');
