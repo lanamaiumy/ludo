@@ -1,0 +1,1 @@
+ALTER TABLE responsavel ALTER COLUMN pin_hash DROP NOT NULL;

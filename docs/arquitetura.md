@@ -73,6 +73,27 @@ O corpo das requisições é limitado a 10 KB, já que nenhuma rota do Ludo rece
 
 A rota `GET /health` executa uma consulta mínima no banco e responde `200` quando a conexão está de pé ou `503` quando não está. Ela serve para o Docker, para os testes e para quem estiver depurando a integração com o app.
 
+O código segue três camadas por assunto: a rota recebe a requisição e valida o corpo, o serviço aplica a regra de negócio e o repositório é o único lugar que escreve SQL. Assim a regra de negócio não conhece HTTP nem SQL, e cada parte pode ser lida sozinha.
+
+### Rotas
+
+| Método e caminho | Acesso | O que faz |
+|---|---|---|
+| `GET /health` | livre | Informa se a API e o banco estão de pé |
+| `POST /auth/cadastro` | livre | Cria a conta do responsável com nome, e-mail e senha |
+| `POST /auth/login` | livre | Confere e-mail e senha e devolve o token de acesso |
+| `GET /auth/perfil` | token | Devolve os dados do responsável dono do token |
+
+### Autenticação
+
+O cadastro recebe nome, e-mail e senha, validados com Zod antes de qualquer acesso ao banco: o e-mail é normalizado (sem espaços e em minúsculas) e a senha precisa ter de 8 a 72 caracteres, o limite do bcrypt. A senha é guardada como hash bcrypt com custo 10. O e-mail repetido é detectado pela própria restrição `UNIQUE` do banco, e não por uma consulta anterior, para que dois cadastros simultâneos com o mesmo e-mail não passem os dois.
+
+O login devolve um token JWT assinado com HS256, válido por 7 dias, que o aplicativo envia no cabeçalho `Authorization: Bearer`. Senha errada e e-mail inexistente recebem exatamente a mesma resposta, e o servidor faz a comparação do bcrypt mesmo quando o e-mail não existe, para que o tempo de resposta também não denuncie quais e-mails têm conta. Cadastro e login aceitam até 10 tentativas a cada 15 minutos por endereço de origem, o que inviabiliza testar senhas em massa.
+
+O PIN não faz parte do cadastro. Pelo fluxo do aplicativo, o responsável cria a conta, entra e só então define o PIN da área restrita, então `pin_hash` passou a aceitar valor nulo (migração `002`). As respostas da API trazem o campo `pinCadastrado`, que indica ao aplicativo quando levar o responsável para a tela de criação do PIN.
+
+No cadastro, a API responde `409` quando o e-mail já existe. Isso revela que aquele e-mail tem conta, mas a alternativa, fingir sucesso, só funciona com confirmação por e-mail, que está fora do escopo do MVP.
+
 ### Acesso ao banco
 
 O acesso ao PostgreSQL é feito com o driver `pg`, sem ORM. O modelo de dados do projeto já está descrito em SQL, com tipos, chaves e restrições, e um ORM exigiria traduzi-lo para outra linguagem de esquema, em que restrições como `CHECK (tempo_sessao_minutos IN (5, 10))` não têm representação direta. Com SQL puro, a migração é o próprio modelo do documento. Todas as consultas usam parâmetros (`$1`, `$2`), nunca concatenação de texto, o que fecha a porta para injeção de SQL.
@@ -151,6 +172,8 @@ As regras de negócio que não podem depender só do aplicativo ficam no própri
 
 Senha e PIN são guardados apenas como hash; o texto original nunca chega ao banco. As consultas mais frequentes, crianças de um responsável e sessões de uma criança por período, têm índices próprios.
 
+Em um ponto o banco diverge da Figura 1 do projeto: lá `pin_hash` é obrigatório, mas o PIN é criado depois do cadastro, no primeiro acesso à área restrita. A coluna passou a aceitar valor nulo, e o aplicativo vai pedir a criação do PIN antes de liberar a área restrita.
+
 Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `children` do PocketBase e guarda o histórico e o progresso no Async Storage. Essas informações passam para as tabelas acima conforme cada rota da API fica pronta.
 
 ## Decisões de segurança
@@ -158,6 +181,8 @@ Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `c
 - **Restrições no banco, não só na tela**: o teto de volume e o tempo de sessão são validados pelo PostgreSQL. Mesmo que uma requisição chegue à API com valores fora da regra, o banco recusa a gravação.
 - **Teto de volume aplicado na reprodução**: o limite configurado pelo responsável restringe o próprio controle exibido à criança, em vez de apenas validar o valor no momento de salvar. A proteção precisa valer no ponto de uso, não só no cadastro.
 - **Consultas parametrizadas**: nenhuma consulta monta SQL concatenando entrada do usuário.
+- **Senhas com hash e login sem pistas**: senhas ficam em bcrypt, o login responde igual para senha errada e e-mail inexistente e as tentativas são limitadas por endereço de origem.
+- **Token com algoritmo fixo**: a verificação do JWT aceita apenas HS256, e o segredo de assinatura vem de variável de ambiente.
 - **Erros sem detalhes internos**: a API nunca devolve pilha de execução, nome de tabela ou mensagem do banco para o cliente.
 - **Nenhum segredo no repositório**: URLs, usuário e senha do banco vêm de variáveis de ambiente, e os arquivos `.env` estão fora do versionamento. Os `.env.example` documentam as chaves esperadas sem expor valores reais.
 - **Dados locais fora do versionamento**: `pb_data/`, o executável do PocketBase e o volume do PostgreSQL ficam fora do Git, para que dados de teste com e-mails reais não acabem no histórico.
@@ -171,11 +196,11 @@ Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `c
 
 No aplicativo, os testes usam Jest com o preset `jest-expo` e a Testing Library, concentrados nos componentes de interface com regra de negócio visível: o campo com rótulo, o nó da trilha e a visualização semanal. A prioridade foi cobrir o que o usuário enxerga e onde um erro passaria despercebido, em vez de perseguir cobertura numérica.
 
-Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, que faz requisições HTTP reais contra a aplicação montada em memória. Os dois projetos têm configurações separadas, e o Jest do aplicativo ignora a pasta `backend/`.
+Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, que faz requisições HTTP reais contra a aplicação montada em memória. Os testes de autenticação rodam contra um PostgreSQL de verdade, o PGlite, que roda dentro do próprio processo de teste: as migrações são aplicadas nele antes dos testes, então as restrições do banco também são testadas, sem precisar de Docker. Os dois projetos têm configurações separadas, e o Jest do aplicativo ignora a pasta `backend/`.
 
 ## O que ainda vai mudar
 
-- Autenticação do responsável na API: cadastro, login com token e PIN numérico para a área restrita.
+- PIN numérico da área restrita, criado no primeiro acesso depois do cadastro, com a tela correspondente no aplicativo.
 - Rotas de crianças e de configuração, com acesso restrito ao responsável dono dos dados.
 - Rotas de histórico de sessões e de progresso na trilha, alimentando a utilização semanal.
 - Troca do PocketBase pela API no aplicativo e remoção do backend provisório.
