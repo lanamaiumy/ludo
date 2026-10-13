@@ -19,7 +19,7 @@ export default function LoginScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!isLoading && token && !submitting) { // se temos um token armazenado no Async Storage, liberamos direto para /(parent)/sessions
+      if (!isLoading && token && !submitting) { // se temos um token armazenado no Async Storage, liberamos direto para /(parent)/pin
         router.replace('/(parent)/pin');
       }
     }, [isLoading, token, submitting, router])
