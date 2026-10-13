@@ -221,7 +221,7 @@ O histórico de sessões e o progresso na trilha ainda ficam no Async Storage do
 - **Token com algoritmo fixo**: a verificação do JWT aceita apenas HS256, e o segredo de assinatura vem de variável de ambiente.
 - **Erros sem detalhes internos**: a API nunca devolve pilha de execução, nome de tabela ou mensagem do banco para o cliente.
 - **Nenhum segredo no repositório**: URLs, usuário e senha do banco vêm de variáveis de ambiente, e os arquivos `.env` estão fora do versionamento. Os `.env.example` documentam as chaves esperadas sem expor valores reais.
-- **Dados locais fora do versionamento**: os arquivos `.env` e o volume do PostgreSQL ficam fora do Git, assim como os arquivos locais da fase com PocketBase, para que dados de teste com e-mails reais não acabem no histórico.
+- **Dados locais fora do versionamento**: os arquivos `.env` e o volume do PostgreSQL ficam fora do Git, para que dados de teste com e-mails reais não acabem no histórico.
 
 ### Limitações reconhecidas
 
