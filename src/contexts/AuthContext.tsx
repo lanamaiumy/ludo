@@ -19,7 +19,7 @@ type AuthContextData = { // conjunto que o contexto irá entregar ao provider
   lockParentArea: () => void;
 };
 
-type AuthRecord = { // tipo usuário que vem da api (pocketbase), serve para tipar a resposta do login
+type AuthRecord = { // tipo usuário que vem da api, serve para tipar a resposta do login
   id: string;
   nome: string;
   email: string;
@@ -40,7 +40,7 @@ const AuthContext = createContext<AuthContextData>({ // criamos o contexto (valo
   lockParentArea: () => {},
 });
 
-function mapRecord(record: AuthRecord): User { // renomeamos o que vem da api para camelCase (convensão), e também, se não tiver determinado dado, use 'Ana', '10' e etc
+function mapRecord(record: AuthRecord): User { // renomeamos os campos em português que vêm da api para os nomes usados no app (convenção)
   return {
     id: record.id,
     name: record.nome,
