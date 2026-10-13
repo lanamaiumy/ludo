@@ -7,12 +7,14 @@ import GradientBackground from '../../components/GradientBackground';
 import Logo from '../../components/Logo';
 import LabeledInput from '../../components/LabeledInput';
 import api from '../../src/services/api';
+import { useAuth } from '../../src/contexts/AuthContext';
+import { getApiErrorMessage } from '../../src/helpers/apiError';
 import { notify } from '../../src/helpers/notify';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { login } = useAuth();
   const [name, setName] = useState('');
-  const [childName, setChildName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,18 +35,15 @@ export default function RegisterScreen() {
     }
     setSubmitting(true);
     try {
-      await api.post('/api/collections/users/records', {
-        name: name.trim(),
-        child_name: childName.trim() || 'Ana',
+      await api.post('/auth/cadastro', {
+        nome: name.trim(),
         email: email.trim(),
-        password,
-        passwordConfirm: confirmPassword,
+        senha: password,
       });
-      notify('Cadastro criado! Agora faça login.');
-      router.replace('/(parent)/login');
+      await login(email.trim(), password);
+      router.replace('/(parent)/pin');
     } catch (e) {
-      notify('Não foi possível concluir o cadastro. Verifique os dados e tente novamente.');
-    } finally {
+      notify(getApiErrorMessage(e, 'Não foi possível concluir o cadastro. Verifique os dados e tente novamente.'));
       setSubmitting(false);
     }
   }
@@ -59,12 +58,6 @@ export default function RegisterScreen() {
           </View>
 
           <LabeledInput label="Seu nome" value={name} onChangeText={setName} placeholder="Digite o seu nome" />
-          <LabeledInput
-            label="Nome da criança"
-            value={childName}
-            onChangeText={setChildName}
-            placeholder="Ex.: Ana"
-          />
           <LabeledInput
             label="E-mail"
             value={email}

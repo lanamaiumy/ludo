@@ -1,3 +1,4 @@
+import cors from 'cors';
 import express from 'express';
 import type { Database } from './database/types';
 import { errorHandler, notFound } from './middlewares/errorHandler';
@@ -14,12 +15,14 @@ import { createPinService } from './services/pinService';
 type AppDependencies = {
   db: Database;
   jwtSecret: string;
+  corsOrigins?: string[];
 };
 
-export function createApp({ db, jwtSecret }: AppDependencies) {
+export function createApp({ db, jwtSecret, corsOrigins = [] }: AppDependencies) {
   const app = express();
 
   app.disable('x-powered-by');
+  app.use(cors({ origin: corsOrigins }));
   app.use(express.json({ limit: '10kb' }));
 
   const responsavelRepository = createResponsavelRepository(db);

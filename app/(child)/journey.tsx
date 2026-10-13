@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -13,17 +14,25 @@ import { scenarios } from '../../src/data/scenarios';
 import { Scenario } from '../../src/types/Scenario';
 import { useProgress } from '../../src/contexts/ProgressContext'; //useProgress()
 import { useAuth } from '../../src/contexts/AuthContext';
+import { useActiveChild } from '../../src/contexts/ActiveChildContext';
 
 // essa é a rota de telas das crianças, é aqui que montamos nossa página com os componentes
 
 export default function JourneyScreen() {
   const router = useRouter();
   const { completedScenarios } = useProgress();
-  const { token } = useAuth();
+  const { token, isLoading } = useAuth();
+  const { activeChild, isLoading: childLoading } = useActiveChild();
+
+  useEffect(() => {
+    if (!isLoading && !childLoading && (!token || !activeChild)) {
+      router.replace('/');
+    }
+  }, [isLoading, childLoading, token, activeChild, router]);
 
   function openParentArea() {
     if (token) {
-      router.push('/(parent)/children');
+      router.push('/(parent)/pin');
     } else {
       router.push('/(parent)/login');
     }

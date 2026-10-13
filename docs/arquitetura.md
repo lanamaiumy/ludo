@@ -29,7 +29,7 @@ O Ludo é composto por um aplicativo React Native com Expo e por uma API REST pr
           orquestrados com Docker Compose
 ```
 
-A primeira fase do desenvolvimento usou o PocketBase como backend provisório, para que a área do responsável pudesse ser construída antes da API. Ele ainda atende o aplicativo enquanto a API ganha as rotas de autenticação, crianças, configurações, histórico e progresso; a troca acontece em etapas, listadas ao final deste documento.
+A primeira fase do desenvolvimento usou o PocketBase como backend provisório, para que a área do responsável pudesse ser construída antes da API. Depois que a API ganhou autenticação, PIN, crianças e configurações, o aplicativo passou a usá-la de uma vez em toda a área do responsável, e o PocketBase saiu do projeto.
 
 ## Aplicativo
 
@@ -38,18 +38,23 @@ A primeira fase do desenvolvimento usou o PocketBase como backend provisório, p
 A navegação usa o roteamento por arquivos do Expo Router, com dois grupos que separam os perfis de uso:
 
 - `(child)`: `journey.tsx` (trilha de cenários) e `exercise/[scenarioId].tsx` (player do cenário).
-- `(parent)`: `login.tsx`, `register.tsx`, `settings.tsx`, `children.tsx` e `child-form.tsx`.
+- `(parent)`: `login.tsx`, `register.tsx`, `pin.tsx`, `children.tsx`, `child-form.tsx` e `settings.tsx`.
 
 A separação em grupos não é só organizacional: ela cria a fronteira natural onde a proteção de acesso do responsável é aplicada, sem que a criança precise atravessar telas administrativas para chegar à trilha.
 
+O acesso segue o fluxo do capítulo 6.3 do projeto. Sem login, o botão "Começar Jornada" aparece com cadeado e explica que é preciso entrar pela Área dos Responsáveis. O cadastro já faz o login e leva à criação do PIN; nos acessos seguintes, a Área dos Responsáveis sempre pede o PIN, inclusive para quem já está logado. A área fica destrancada só enquanto a lista de crianças está aberta: ao sair dela, por qualquer caminho, o app tranca de novo. As telas da área usam o hook `useParentAccess`, que manda para o login ou para o PIN quem chegar sem permissão, inclusive digitando o endereço no navegador.
+
+A tela de PIN concentra os três fluxos com o mesmo teclado: conferir, criar (escolher e confirmar) e o "Esqueceu o PIN?", que pede a senha da conta antes do novo PIN.
+
 ### Estado (`src/contexts/`)
 
-O estado compartilhado fica em dois contextos, cada um com uma responsabilidade única:
+O estado compartilhado fica em três contextos, cada um com uma responsabilidade única:
 
-- **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app e expõe `login` e `logout`. A resposta do backend chega em `snake_case` e é convertida para o formato interno em `camelCase` por uma função de mapeamento, isolando o resto do app do formato do servidor.
+- **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app, expõe `login` e `logout` e controla se a área dos pais está destrancada. A resposta da API chega com campos em português e é convertida para o formato interno por uma função de mapeamento, isolando o resto do app do formato do servidor. Quando a API responde que o token venceu, a sessão é encerrada automaticamente.
+- **`ActiveChildContext`**: guarda a criança que usa a jornada neste aparelho, escolhida pela estrela na lista de crianças, com o nome e a configuração dela. Fica salva no aparelho para o player funcionar sem rede, é atualizada sempre que a lista é carregada e é apagada no logout. Quando há uma única criança, ela é escolhida automaticamente.
 - **`ProgressContext`**: mantém os cenários concluídos e a utilização semanal, derivada do histórico de sessões.
 
-A escolha pela Context API, e não por uma biblioteca de estado global, é proporcional ao problema: são dois domínios de estado, com poucas atualizações e sem necessidade de seletores ou memoização fina. Adotar uma solução maior aqui traria configuração sem benefício.
+A escolha pela Context API, e não por uma biblioteca de estado global, é proporcional ao problema: são poucos domínios de estado, com poucas atualizações e sem necessidade de seletores ou memoização fina. Adotar uma solução maior aqui traria configuração sem benefício.
 
 ### Persistência local (`src/helpers/AsyncStorageHelper.ts`)
 
@@ -57,7 +62,9 @@ O acesso ao Async Storage é centralizado em um helper tipado, com funções par
 
 ### Comunicação com o backend (`src/services/api.ts`)
 
-Uma única instância do Axios concentra a comunicação com o servidor. A URL base vem de `EXPO_PUBLIC_API_URL`, nunca fixada no código, e um interceptador de requisição injeta o token de autenticação automaticamente. Assim nenhuma tela precisa lembrar de enviar credenciais, e apontar o app para a nova API é questão de trocar a variável de ambiente e os caminhos das rotas.
+Uma única instância do Axios concentra a comunicação com o servidor. A URL base vem de `EXPO_PUBLIC_API_URL`, nunca fixada no código, e um interceptador de requisição injeta o token no cabeçalho `Authorization: Bearer` automaticamente. Assim nenhuma tela precisa lembrar de enviar credenciais.
+
+As chamadas de crianças ficam em `src/services/children.ts`, que também converte o formato da API para o do app: os campos em português viram os nomes usados no código, e o volume máximo de 1 a 100 vira a escala de 0 a 1 do controle deslizante. As mensagens de erro exibidas ao responsável vêm da própria API, lidas por `getApiErrorMessage`, que prefere o erro do campo inválido e avisa quando o servidor não responde.
 
 ### Catálogo de cenários (`src/data/scenarios.ts`)
 
@@ -69,7 +76,7 @@ Os cenários e seus sons são declarados como dados estáticos, com os arquivos 
 
 A API usa Express com TypeScript. O ponto de entrada é a função `createApp(db)`, que monta a aplicação recebendo o acesso ao banco como parâmetro em vez de importá-lo diretamente. Com isso os testes sobem a API inteira com um banco simulado, sem precisar de PostgreSQL rodando, e o `server.ts` fica responsável apenas por ligar a aplicação ao banco real e abrir a porta.
 
-O corpo das requisições é limitado a 10 KB, já que nenhuma rota do Ludo recebe arquivos, e o cabeçalho `X-Powered-By` é desligado para não anunciar a tecnologia do servidor. Erros passam por um tratador único que responde com mensagens genéricas: JSON malformado vira `400`, rota inexistente vira `404` e qualquer falha inesperada vira `500`, sem expor pilha de execução ou detalhes do banco para o cliente.
+O corpo das requisições é limitado a 10 KB, já que nenhuma rota do Ludo recebe arquivos, e o cabeçalho `X-Powered-By` é desligado para não anunciar a tecnologia do servidor. O CORS libera apenas as origens listadas em `CORS_ORIGINS`, que no desenvolvimento é o endereço do app web; o app no celular não envia origem e não depende dessa configuração. Erros passam por um tratador único que responde com mensagens genéricas: JSON malformado vira `400`, rota inexistente vira `404` e qualquer falha inesperada vira `500`, sem expor pilha de execução ou detalhes do banco para o cliente.
 
 A rota `GET /health` executa uma consulta mínima no banco e responde `200` quando a conexão está de pé ou `503` quando não está. Ela serve para o Docker, para os testes e para quem estiver depurando a integração com o app.
 
@@ -118,7 +125,7 @@ Toda consulta de criança filtra pelo responsável do token, inclusive nas atual
 
 A criança e a configuração dela são criadas em um único comando SQL, então nunca existe criança sem configuração, e a resposta já traz as duas. Os valores padrão (teto de 50% do volume e sessão de 5 minutos) ficam no próprio banco, como `DEFAULT` das colunas: a criação usa esses valores e o "Retornar a configuração padrão" do protótipo volta a eles sem que o código precise repetir os números. O padrão começa pelo tempo mais curto e pela metade do volume porque a dessensibilização parte de estímulos baixos e curtos; o responsável ajusta a partir daí.
 
-A criança tem apenas nome, como na Figura 1 do projeto. Idade e observações, que existiam no cadastro da fase com PocketBase, não fazem parte do modelo e saem do aplicativo quando a área do responsável passar a usar a API. O volume máximo é guardado de 1 a 100; a conversão para a escala de 0 a 1 do controle deslizante fica no aplicativo.
+A criança tem apenas nome, como na Figura 1 do projeto. Idade e observações, que existiam no cadastro da fase com PocketBase, não fazem parte do modelo e saíram do aplicativo. O volume máximo é guardado de 1 a 100; a conversão para a escala de 0 a 1 do controle deslizante fica no aplicativo.
 
 ### Acesso ao banco
 
@@ -199,9 +206,9 @@ As regras de negócio que não podem depender só do aplicativo ficam no própri
 
 Senha e PIN são guardados apenas como hash; o texto original nunca chega ao banco. As consultas mais frequentes, crianças de um responsável e sessões de uma criança por período, têm índices próprios.
 
-Em um ponto o banco diverge da Figura 1 do projeto: lá `pin_hash` é obrigatório, mas o PIN é criado depois do cadastro, no primeiro acesso à área restrita. A coluna passou a aceitar valor nulo, e o aplicativo vai pedir a criação do PIN antes de liberar a área restrita.
+Em um ponto o banco diverge da Figura 1 do projeto: lá `pin_hash` é obrigatório, mas o PIN é criado depois do cadastro, no primeiro acesso à área restrita. A coluna passou a aceitar valor nulo, e o aplicativo pede a criação do PIN antes de liberar a área restrita.
 
-Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `children` do PocketBase e guarda o histórico e o progresso no Async Storage. Essas informações passam para as tabelas acima conforme cada rota da API fica pronta.
+O histórico de sessões e o progresso na trilha ainda ficam no Async Storage do aparelho, e passam para as tabelas `historico_sessao` e `progresso_trilha` na próxima etapa.
 
 ## Decisões de segurança
 
@@ -210,10 +217,11 @@ Enquanto a troca não termina, o aplicativo ainda usa as coleções `users` e `c
 - **Consultas parametrizadas**: nenhuma consulta monta SQL concatenando entrada do usuário.
 - **Senhas com hash e login sem pistas**: senhas ficam em bcrypt, o login responde igual para senha errada e e-mail inexistente e as tentativas são limitadas por endereço de origem.
 - **PIN protegido contra tentativa e erro**: o PIN fica em bcrypt, aceita 5 erros a cada 15 minutos por conta e só pode ser trocado com a senha.
+- **CORS restrito**: o navegador só consegue chamar a API a partir das origens configuradas; sem configuração, nenhuma origem é liberada.
 - **Token com algoritmo fixo**: a verificação do JWT aceita apenas HS256, e o segredo de assinatura vem de variável de ambiente.
 - **Erros sem detalhes internos**: a API nunca devolve pilha de execução, nome de tabela ou mensagem do banco para o cliente.
 - **Nenhum segredo no repositório**: URLs, usuário e senha do banco vêm de variáveis de ambiente, e os arquivos `.env` estão fora do versionamento. Os `.env.example` documentam as chaves esperadas sem expor valores reais.
-- **Dados locais fora do versionamento**: `pb_data/`, o executável do PocketBase e o volume do PostgreSQL ficam fora do Git, para que dados de teste com e-mails reais não acabem no histórico.
+- **Dados locais fora do versionamento**: os arquivos `.env` e o volume do PostgreSQL ficam fora do Git, assim como os arquivos locais da fase com PocketBase, para que dados de teste com e-mails reais não acabem no histórico.
 
 ### Limitações reconhecidas
 
@@ -230,7 +238,6 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Troca do PocketBase pela API no aplicativo, com as telas de criação e de digitação do PIN, o bloqueio da trilha antes do login e a remoção do backend provisório.
 - Rotas de histórico de sessões e de progresso na trilha, alimentando a utilização semanal a partir do banco.
 - Controle do tempo de sessão durante a reprodução, com aviso suave quando o tempo acaba.
 - Sistema de recompensas visuais ao cumprir a meta da sessão.

@@ -1,7 +1,6 @@
 export type User = {
   id: string;
+  name: string;
   email: string;
-  childName: string;
-  maxVolume: number;
-  sessionTime: number;
+  hasPin: boolean;
 };

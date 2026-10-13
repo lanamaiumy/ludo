@@ -4,47 +4,41 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, IconButton, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GradientBackground from '../../components/GradientBackground';
+import { useActiveChild } from '../../src/contexts/ActiveChildContext';
 import { useAuth } from '../../src/contexts/AuthContext';
-import api from '../../src/services/api';
+import { getApiErrorMessage } from '../../src/helpers/apiError';
+import { useParentAccess } from '../../src/hooks/useParentAccess';
+import { deleteChild, listChildren } from '../../src/services/children';
 import { notify } from '../../src/helpers/notify';
-
-type ChildRecord = {
-  id: string;
-  name: string;
-  age: number;
-  notes: string;
-};
+import { Child } from '../../src/types/Child';
 
 export default function ChildrenScreen() {
   const router = useRouter();
-  const { user, token, isLoading: authLoading, logout } = useAuth();
-  const [children, setChildren] = useState<ChildRecord[]>([]);
+  const hasAccess = useParentAccess();
+  const { logout, lockParentArea } = useAuth();
+  const { activeChild, selectChild, syncWithChildren } = useActiveChild();
+  const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (!authLoading && !token) {
-      router.replace('/(parent)/login');
-    }
-  }, [authLoading, token, router]);
+  useEffect(() => lockParentArea, [lockParentArea]);
 
-  // padrão para chamada api: await api.verbo(url, corpo/parametros) 
+  // padrão para chamada api: await api.verbo(url, corpo/parametros)
 
   const loadChildren = useCallback(async () => { //get
-    if (!user) {
+    if (!hasAccess) {
       return;
     }
     setLoading(true);
     try {
-      const response = await api.get('/api/collections/children/records', { //get
-        params: { filter: `(user='${user.id}')`, sort: '-created' },
-      });
-      setChildren(response.data.items ?? []);
+      const list = await listChildren(); //get
+      setChildren(list);
+      await syncWithChildren(list);
     } catch (e) {
-      notify('Não foi possível carregar as crianças. Verifique a conexão.');
+      notify(getApiErrorMessage(e, 'Não foi possível carregar as crianças. Verifique a conexão.'));
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [hasAccess, syncWithChildren]);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,28 +48,43 @@ export default function ChildrenScreen() {
 
   async function handleDelete(id: string) {
     try {
-      await api.delete(`/api/collections/children/records/${id}`); //delete
-      setChildren((prev) => prev.filter((item) => item.id !== id));
+      await deleteChild(id); //delete
+      const remaining = children.filter((item) => item.id !== id);
+      setChildren(remaining);
+      await syncWithChildren(remaining);
     } catch (e) {
-      notify('Não foi possível excluir a criança.');
+      notify(getApiErrorMessage(e, 'Não foi possível excluir a criança.'));
     }
   }
 
   async function handleLogout() {
+    router.replace('/');
     await logout();
+  }
+
+  function goToJourney() {
     router.replace('/');
   }
 
-  function editChild(item: ChildRecord) {
+  function editChild(item: Child) {
     router.push({
       pathname: '/(parent)/child-form',
       params: {
         id: item.id,
         name: item.name,
-        age: String(item.age),
-        notes: item.notes,
       },
     });
+  }
+
+  function openSettings(item: Child) {
+    router.push({
+      pathname: '/(parent)/settings',
+      params: { id: item.id },
+    });
+  }
+
+  if (!hasAccess) {
+    return null;
   }
 
   return (
@@ -84,10 +93,14 @@ export default function ChildrenScreen() {
         <View style={styles.header}>
           <Text style={styles.title}>Crianças</Text>
           <View style={styles.headerActions}>
-            <IconButton icon="cog" iconColor="#2E6FB7" onPress={() => router.push('/(parent)/settings')} />
-            <IconButton icon="logout" iconColor="#FF7A7A" onPress={handleLogout} />
+            <IconButton icon="home" iconColor="#2E6FB7" accessibilityLabel="Voltar para a jornada" onPress={goToJourney} />
+            <IconButton icon="logout" iconColor="#FF7A7A" accessibilityLabel="Sair da conta" onPress={handleLogout} />
           </View>
         </View>
+
+        <Text style={styles.helper}>
+          Toque em uma criança para ajustar o volume e o tempo de sessão. A estrela marca quem usa a jornada neste aparelho.
+        </Text>
 
         <Button
           mode="contained"
@@ -100,7 +113,7 @@ export default function ChildrenScreen() {
           Nova criança
         </Button>
 
-        {loading && <ActivityIndicator color="#4A90D9" style={styles.loader} />} 
+        {loading && <ActivityIndicator color="#4A90D9" style={styles.loader} />}
 
         <FlatList
           contentContainerStyle={styles.list}
@@ -109,23 +122,32 @@ export default function ChildrenScreen() {
           ListEmptyComponent={ // casos de lista vazia
             !loading ? <Text style={styles.empty}>Nenhuma criança cadastrada ainda.</Text> : null
           }
-          renderItem={({ item }) => (
-            <Card style={styles.card}>
-              <Card.Content style={styles.cardContent}>
-                <View style={styles.cardInfo}>
-                  <Text style={styles.cardTitle}>{item.name}</Text>
-                  <Text style={styles.cardSub}>
-                    {item.age > 0 ? `${item.age} anos` : 'Idade não informada'}
-                    {item.notes ? ` · ${item.notes}` : ''}
-                  </Text>
-                </View>
-                <View style={styles.cardActions}>
-                  <IconButton icon="pencil" iconColor="#2E6FB7" size={20} onPress={() => editChild(item)} />
-                  <IconButton icon="trash-can-outline" iconColor="#FF7A7A" size={20} onPress={() => handleDelete(item.id)} />
-                </View>
-              </Card.Content>
-            </Card>
-          )}
+          renderItem={({ item }) => {
+            const isActive = activeChild?.id === item.id;
+            return (
+              <Card style={styles.card} onPress={() => openSettings(item)}>
+                <Card.Content style={styles.cardContent}>
+                  <IconButton
+                    icon={isActive ? 'star' : 'star-outline'}
+                    iconColor="#F5A623"
+                    size={22}
+                    accessibilityLabel={isActive ? `${item.name} usa a jornada` : `Usar a jornada com ${item.name}`}
+                    onPress={() => selectChild(item)}
+                  />
+                  <View style={styles.cardInfo}>
+                    <Text style={styles.cardTitle}>{item.name}</Text>
+                    <Text style={styles.cardSub}>
+                      Volume máximo {Math.round(item.maxVolume * 100)}% · Sessão de {item.sessionMinutes} min
+                    </Text>
+                  </View>
+                  <View style={styles.cardActions}>
+                    <IconButton icon="pencil" iconColor="#2E6FB7" size={20} accessibilityLabel={`Renomear ${item.name}`} onPress={() => editChild(item)} />
+                    <IconButton icon="trash-can-outline" iconColor="#FF7A7A" size={20} accessibilityLabel={`Excluir ${item.name}`} onPress={() => handleDelete(item.id)} />
+                  </View>
+                </Card.Content>
+              </Card>
+            );
+          }}
         />
       </SafeAreaView>
     </GradientBackground>
@@ -151,9 +173,14 @@ const styles = StyleSheet.create({ // StyleSheet
   headerActions: {
     flexDirection: 'row',
   },
+  helper: {
+    fontSize: 13,
+    color: '#6E8BA8',
+    marginTop: 4,
+  },
   newButton: {
     borderRadius: 24,
-    marginTop: 8,
+    marginTop: 12,
     marginBottom: 12,
   },
   newButtonContent: {
@@ -179,6 +206,7 @@ const styles = StyleSheet.create({ // StyleSheet
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingLeft: 4,
   },
   cardInfo: {
     flex: 1,

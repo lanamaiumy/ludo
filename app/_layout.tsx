@@ -11,6 +11,7 @@ import {
 import { configureFonts, MD3LightTheme, PaperProvider } from 'react-native-paper'; // tema
 import { SafeAreaProvider } from 'react-native-safe-area-context'; // medidas seguras dos aparelhos
 import { AuthContextProvider } from '../src/contexts/AuthContext'; // estado de acesso dos pais
+import { ActiveChildContextProvider } from '../src/contexts/ActiveChildContext';
 import { ProgressContextProvider } from '../src/contexts/ProgressContext'; // progresso da criança
 
 // precisamos obrigatoriamente do _layout, são as regras de layout que 
@@ -59,14 +60,16 @@ export default function RootLayout() {
       <PaperProvider theme={theme}>
         <ThemeProvider value={navigationTheme}>
           <AuthContextProvider>
-            <ProgressContextProvider>
-              <Stack // definimos se vamos empilhar uma tela por cima de outra com o stack
-                screenOptions={{
-                  headerShown: false, // definimos se teremos a barra de navegação ou não
-                  contentStyle: { backgroundColor: '#EAF4FF' },
-                }}
-              />
-            </ProgressContextProvider>
+            <ActiveChildContextProvider>
+              <ProgressContextProvider>
+                <Stack // definimos se vamos empilhar uma tela por cima de outra com o stack
+                  screenOptions={{
+                    headerShown: false, // definimos se teremos a barra de navegação ou não
+                    contentStyle: { backgroundColor: '#EAF4FF' },
+                  }}
+                />
+              </ProgressContextProvider>
+            </ActiveChildContextProvider>
           </AuthContextProvider>
         </ThemeProvider>
       </PaperProvider>

@@ -8,44 +8,27 @@ import Logo from '../../../components/Logo';
 import Mascot from '../../../components/Mascot';
 import AudioPlayer from '../../../components/AudioPlayer';
 import { scenarios } from '../../../src/data/scenarios';
-import { User } from '../../../src/types/User';
+import { useActiveChild } from '../../../src/contexts/ActiveChildContext';
 import { useProgress } from '../../../src/contexts/ProgressContext';
-import { AsyncStorageHelper } from '../../../src/helpers/AsyncStorageHelper';
-
-const CHILD_KEY = 'child_name';
-const USER_KEY = 'auth_user';
-const VOLUME_KEY = 'max_volume';
 
 export default function ExerciseScreen() {
   const router = useRouter();
   const { scenarioId } = useLocalSearchParams<{ scenarioId: string }>();
   const { markScenarioCompleted, addSession } = useProgress();
+  const { activeChild, isLoading: childLoading } = useActiveChild();
 
   const scenario = useMemo(() => scenarios.find((item) => item.id === scenarioId), [scenarioId]);
   const sound = scenario?.sounds[0];
 
-  const [childName, setChildName] = useState('Ana');
-  const [maxVolume, setMaxVolume] = useState(1);
   const [showDescription, setShowDescription] = useState(false);
   const [soft, setSoft] = useState(false);
   const [finished, setFinished] = useState(false);
 
   useEffect(() => {
-    async function loadConfig() {
-      const name = await AsyncStorageHelper.getString(CHILD_KEY);
-      const storedUser = await AsyncStorageHelper.getObject<User>(USER_KEY);
-      const savedVolume = await AsyncStorageHelper.getNumber(VOLUME_KEY);
-      if (name) {
-        setChildName(name);
-      } else if (storedUser?.childName) {
-        setChildName(storedUser.childName);
-      }
-      if (savedVolume !== null) {
-        setMaxVolume(savedVolume);
-      }
+    if (!childLoading && !activeChild) {
+      router.replace('/');
     }
-    loadConfig();
-  }, []);
+  }, [childLoading, activeChild, router]);
 
   async function handleComplete() {
     if (finished || !scenario || !sound) {
@@ -60,6 +43,10 @@ export default function ExerciseScreen() {
       completed: true,
       usedSoftMode: soft,
     });
+  }
+
+  if (!activeChild) {
+    return null;
   }
 
   if (!scenario || !sound) {
@@ -101,7 +88,7 @@ export default function ExerciseScreen() {
             <Mascot size={96} variant="happy" />
             <View style={styles.bubble}>
               <Text style={styles.bubbleText}>
-                {childName}, vamos ouvir o {sound.name}?
+                {activeChild.name}, vamos ouvir o {sound.name}?
               </Text>
             </View>
           </View>
@@ -109,7 +96,7 @@ export default function ExerciseScreen() {
           <AudioPlayer
             soundFile={sound.file}
             softFile={sound.softFile}
-            maxVolume={maxVolume}
+            maxVolume={activeChild.maxVolume}
             soundName={sound.name}
             soft={soft}
             onComplete={handleComplete}

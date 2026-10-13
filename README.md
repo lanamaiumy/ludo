@@ -36,7 +36,7 @@ O Ludo atende dois perfis complementares:
 | Aplicativo | React Native com Expo (SDK 56) e TypeScript |
 | Navegação | Expo Router, com grupos de rotas `(child)` e `(parent)` |
 | Interface | React Native Paper |
-| Estado | Context API (`AuthContext`, `ProgressContext`) |
+| Estado | Context API (`AuthContext`, `ActiveChildContext`, `ProgressContext`) |
 | Áudio | expo-av |
 | Persistência local | Async Storage |
 | API | REST em Node.js com TypeScript e Express |
@@ -44,20 +44,20 @@ O Ludo atende dois perfis complementares:
 | Infraestrutura | Docker e Docker Compose |
 | Testes | Jest com jest-expo e Testing Library no app, `node:test` com Supertest na API |
 
-A stack segue o capítulo 4.4 do projeto do TCC. Durante a primeira fase, o PocketBase foi usado como backend provisório da área do responsável e continua ativo até o aplicativo passar a consumir a API. As decisões por trás dessas escolhas estão registradas em [docs/arquitetura.md](docs/arquitetura.md).
+A stack segue o capítulo 4.4 do projeto do TCC. Na primeira fase, o PocketBase foi usado como backend provisório da área do responsável; hoje o aplicativo fala apenas com a API. As decisões por trás dessas escolhas estão registradas em [docs/arquitetura.md](docs/arquitetura.md).
 
 ## Estrutura do repositório
 
 ```
 app/            rotas do Expo Router, separadas em (child) e (parent)
 components/     componentes de interface reutilizáveis
-src/contexts/   estado compartilhado de autenticação e progresso
+src/contexts/   estado compartilhado de autenticação, criança ativa e progresso
 src/data/       definição dos cenários e dos sons de cada etapa
-src/helpers/    utilitários de armazenamento local e notificações
-src/services/   cliente HTTP do aplicativo
+src/helpers/    utilitários de armazenamento local, notificações e erros da API
+src/hooks/      proteção das telas da área dos pais
+src/services/   cliente HTTP e chamadas da API
 src/types/      contratos de dados da aplicação
 assets/sounds/  áudios por cenário, em versão normal e suave
-pb_migrations/  migrações das coleções do PocketBase (provisório)
 __tests__/      testes de componentes
 docs/           documentação do projeto
 
@@ -98,9 +98,9 @@ cp .env.example .env
 npm start
 ```
 
-Ajuste `EXPO_PUBLIC_API_URL` no `.env` e abra o QR Code no Expo Go, ou rode `npm run android` / `npm run ios`.
+Com a API no ar, o app abre no navegador com `npm run web`. Para o navegador poder chamar a API, o endereço do app (por padrão http://localhost:8081) precisa estar em `CORS_ORIGINS` no `backend/.env`.
 
-Enquanto a troca para a API não termina, a área do responsável ainda usa o PocketBase. Para subi-lo, baixe o executável em https://pocketbase.io/docs/ na raiz do projeto (ele é ignorado pelo versionamento) e rode `./pocketbase serve`; as coleções são criadas pelas migrações em `pb_migrations/`.
+No celular, com o Expo Go, troque `EXPO_PUBLIC_API_URL` no `.env` pelo IP do computador na rede local (por exemplo `http://192.168.0.10:3333`), já que `localhost` no celular aponta para o próprio aparelho. Depois abra o QR Code do `npm start`, ou rode `npm run android` / `npm run ios`.
 
 ### Testes
 
@@ -116,9 +116,9 @@ cd backend && npm test
 
 ## Estado atual
 
-A base funcional já cobre a autenticação do responsável, a trilha de cenários com bloqueio por etapa, o player com teto de volume e modo suave, e a visualização da utilização semanal. Os áudios em `assets/sounds/` ainda são arquivos reservados e serão substituídos por sons reais, em versão normal e suave para cada cenário.
+O aplicativo já usa a API em toda a área do responsável: cadastro, login, criação e conferência do PIN, cadastro das crianças e configuração de volume máximo e tempo de sessão por criança. A jornada só abre depois do login e com uma criança escolhida, e o player usa o teto de volume dessa criança. Os áudios em `assets/sounds/` ainda são arquivos reservados e serão substituídos por sons reais, em versão normal e suave para cada cenário.
 
-A API já tem o banco PostgreSQL modelado conforme o projeto do TCC, orquestrado em Docker, e as rotas de cadastro, login, perfil e PIN do responsável, além do cadastro das crianças com volume máximo e tempo de sessão. Os próximos passos concentram-se nas rotas de histórico de sessões e progresso, na troca do PocketBase pela API no aplicativo e no sistema de recompensas visuais.
+Os próximos passos concentram-se no histórico de sessões e no progresso da trilha guardados no banco, no controle do tempo de sessão durante a reprodução, no sistema de recompensas visuais e na suavização progressiva do volume.
 
 ## Projeto relacionado
 
