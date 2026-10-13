@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,20 +7,23 @@ import GradientBackground from '../../components/GradientBackground';
 import Logo from '../../components/Logo';
 import LabeledInput from '../../components/LabeledInput';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { getApiErrorMessage } from '../../src/helpers/apiError';
 import { notify } from '../../src/helpers/notify';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login, token, isLoading } = useAuth();
+  const { login, token, isLoading, unlockParentArea } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (!isLoading && token) { // se temos um token armazenado no Async Storage, liberamos direto para /(parent)/sessions
-      router.replace('/(parent)/children');
-    }
-  }, [isLoading, token, router]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!isLoading && token && !submitting) { // se temos um token armazenado no Async Storage, liberamos direto para /(parent)/sessions
+        router.replace('/(parent)/pin');
+      }
+    }, [isLoading, token, submitting, router])
+  );
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
@@ -29,11 +32,15 @@ export default function LoginScreen() {
     }
     setSubmitting(true);
     try {
-      await login(email.trim(), password);
-      router.replace('/(parent)/children'); //acesso liberado pós login()
+      const loggedUser = await login(email.trim(), password);
+      if (loggedUser.hasPin) {
+        unlockParentArea();
+        router.replace('/(parent)/children'); //acesso liberado pós login()
+      } else {
+        router.replace('/(parent)/pin');
+      }
     } catch (e) {
-      notify('Não foi possível fazer login. Verifique seu email e senha.');
-    } finally {
+      notify(getApiErrorMessage(e, 'Não foi possível fazer login. Verifique seu email e senha.'));
       setSubmitting(false);
     }
   }
@@ -77,7 +84,7 @@ export default function LoginScreen() {
           </Button>
           <Button
             mode="contained"
-            onPress={() => router.push('/(parent)/register')}
+            onPress={() => router.replace('/(parent)/register')}
             buttonColor="#E7EEF6"
             textColor="#2E6FB7"
             style={styles.secondaryButton}
