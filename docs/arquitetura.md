@@ -102,6 +102,9 @@ O código segue três camadas por assunto: a rota recebe a requisição e valida
 | `PUT /criancas/:id/configuracao/padrao` | token | Volta a configuração para o padrão ("Retornar a configuração padrão") |
 | `POST /criancas/:id/sessoes` | token | Registra uma sessão da criança no dia informado |
 | `GET /criancas/:id/sessoes/semana?inicio=AAAA-MM-DD` | token | Resume os sete dias a partir do início: sessões, concluídas e se o dia teve uso |
+| `GET /criancas/:id/progresso` | token | Lista os cenários desbloqueados e concluídos pela criança |
+| `POST /criancas/:id/progresso/:cenario/desbloqueio` | token | Desbloqueia um cenário |
+| `POST /criancas/:id/progresso/:cenario/conclusao` | token | Marca um cenário como concluído, o que também o desbloqueia |
 
 ### Autenticação
 
@@ -134,6 +137,12 @@ A criança tem apenas nome, como na Figura 1 do projeto. Idade e observações, 
 Cada sessão registrada guarda o dia e se foi concluída, como a tabela `historico_sessao` do projeto. O dia vem do aparelho, e não do relógio do servidor: o servidor trabalha em UTC, e uma sessão às 22h no Brasil cairia no dia seguinte. A API só recusa datas mais de um dia à frente, margem que cobre a diferença de fuso.
 
 A utilização semanal é calculada no banco. A consulta gera os sete dias a partir do início informado e cruza com as sessões da criança, então dias sem uso aparecem com zero em vez de sumirem da resposta. O início da semana também vem do aparelho, para que o app decida se a semana começa na segunda, como no protótipo.
+
+### Progresso na trilha
+
+A ordem dos cenários e os sons ficam no aplicativo, junto com os áudios embarcados, então a API não decide qual cenário vem depois de qual: ela guarda o que a criança já desbloqueou e concluiu, e o aplicativo aplica a ordem da trilha. Por isso o cenário é identificado pelo mesmo nome usado no app (`quarto`, `sala`, `parque`), validado apenas no formato.
+
+O progresso só avança. Desbloquear um cenário já concluído não desfaz a conclusão, e concluir de novo não duplica o registro: a gravação é um único comando que insere ou atualiza combinando o valor antigo com o novo. Assim a criança pode repetir cenários anteriores à vontade sem perder o que já conquistou.
 
 ### Acesso ao banco
 
@@ -197,6 +206,7 @@ erDiagram
         uuid crianca_id PK, FK
         varchar cenario PK
         boolean desbloqueado
+        boolean concluido
     }
 ```
 
@@ -210,11 +220,12 @@ As regras de negócio que não podem depender só do aplicativo ficam no própri
 | Cada criança tem uma única configuração | `crianca_id` é a chave primária de `configuracao` |
 | Configuração padrão de 50% e 5 minutos | `DEFAULT` nas colunas de `configuracao` |
 | Um registro de progresso por cenário | chave primária composta `(crianca_id, cenario)` |
+| Cenário concluído está sempre desbloqueado | `CHECK (desbloqueado OR NOT concluido)` |
 | Dados da criança somem junto com a conta | `ON DELETE CASCADE` em todas as chaves estrangeiras |
 
 Senha e PIN são guardados apenas como hash; o texto original nunca chega ao banco. As consultas mais frequentes, crianças de um responsável e sessões de uma criança por período, têm índices próprios.
 
-Em um ponto o banco diverge da Figura 1 do projeto: lá `pin_hash` é obrigatório, mas o PIN é criado depois do cadastro, no primeiro acesso à área restrita. A coluna passou a aceitar valor nulo, e o aplicativo pede a criação do PIN antes de liberar a área restrita.
+Em dois pontos o banco diverge da Figura 1 do projeto. O primeiro é o `pin_hash`, obrigatório na figura: o PIN é criado depois do cadastro, no primeiro acesso à área restrita, então a coluna passou a aceitar valor nulo e o aplicativo pede a criação do PIN antes de liberar a área restrita. O segundo é a coluna `concluido` em `progresso_trilha` (migração `004`): a figura guarda só `desbloqueado`, mas a trilha do protótipo mostra três estados (concluído, atual e bloqueado), e sem guardar a conclusão o último cenário nunca apareceria como concluído.
 
 A API já registra o histórico de sessões, mas o aplicativo ainda guarda o histórico e o progresso na trilha no Async Storage do aparelho. O app passa a usar `historico_sessao` e `progresso_trilha` em etapas próprias.
 
@@ -246,7 +257,6 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Rotas de progresso na trilha, com os cenários concluídos por criança.
 - Aplicativo registrando as sessões na API e mostrando a utilização semanal vinda do banco.
 - Aplicativo usando o progresso da trilha guardado na API.
 - Controle do tempo de sessão durante a reprodução, com aviso suave quando o tempo acaba.
