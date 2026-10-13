@@ -100,6 +100,8 @@ O código segue três camadas por assunto: a rota recebe a requisição e valida
 | `DELETE /criancas/:id` | token | Remove a criança e tudo que pertence a ela |
 | `PUT /criancas/:id/configuracao` | token | Define o volume máximo e o tempo de sessão |
 | `PUT /criancas/:id/configuracao/padrao` | token | Volta a configuração para o padrão ("Retornar a configuração padrão") |
+| `POST /criancas/:id/sessoes` | token | Registra uma sessão da criança no dia informado |
+| `GET /criancas/:id/sessoes/semana?inicio=AAAA-MM-DD` | token | Resume os sete dias a partir do início: sessões, concluídas e se o dia teve uso |
 
 ### Autenticação
 
@@ -126,6 +128,12 @@ Toda consulta de criança filtra pelo responsável do token, inclusive nas atual
 A criança e a configuração dela são criadas em um único comando SQL, então nunca existe criança sem configuração, e a resposta já traz as duas. Os valores padrão (teto de 50% do volume e sessão de 5 minutos) ficam no próprio banco, como `DEFAULT` das colunas: a criação usa esses valores e o "Retornar a configuração padrão" do protótipo volta a eles sem que o código precise repetir os números. O padrão começa pelo tempo mais curto e pela metade do volume porque a dessensibilização parte de estímulos baixos e curtos; o responsável ajusta a partir daí.
 
 A criança tem apenas nome, como na Figura 1 do projeto. Idade e observações, que existiam no cadastro da fase com PocketBase, não fazem parte do modelo e saíram do aplicativo. O volume máximo é guardado de 1 a 100; a conversão para a escala de 0 a 1 do controle deslizante fica no aplicativo.
+
+### Histórico de sessões
+
+Cada sessão registrada guarda o dia e se foi concluída, como a tabela `historico_sessao` do projeto. O dia vem do aparelho, e não do relógio do servidor: o servidor trabalha em UTC, e uma sessão às 22h no Brasil cairia no dia seguinte. A API só recusa datas mais de um dia à frente, margem que cobre a diferença de fuso.
+
+A utilização semanal é calculada no banco. A consulta gera os sete dias a partir do início informado e cruza com as sessões da criança, então dias sem uso aparecem com zero em vez de sumirem da resposta. O início da semana também vem do aparelho, para que o app decida se a semana começa na segunda, como no protótipo.
 
 ### Acesso ao banco
 
@@ -208,7 +216,7 @@ Senha e PIN são guardados apenas como hash; o texto original nunca chega ao ban
 
 Em um ponto o banco diverge da Figura 1 do projeto: lá `pin_hash` é obrigatório, mas o PIN é criado depois do cadastro, no primeiro acesso à área restrita. A coluna passou a aceitar valor nulo, e o aplicativo pede a criação do PIN antes de liberar a área restrita.
 
-O histórico de sessões e o progresso na trilha ainda ficam no Async Storage do aparelho, e passam para as tabelas `historico_sessao` e `progresso_trilha` na próxima etapa.
+A API já registra o histórico de sessões, mas o aplicativo ainda guarda o histórico e o progresso na trilha no Async Storage do aparelho. O app passa a usar `historico_sessao` e `progresso_trilha` em etapas próprias.
 
 ## Decisões de segurança
 
@@ -238,7 +246,9 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Rotas de histórico de sessões e de progresso na trilha, alimentando a utilização semanal a partir do banco.
+- Rotas de progresso na trilha, com os cenários concluídos por criança.
+- Aplicativo registrando as sessões na API e mostrando a utilização semanal vinda do banco.
+- Aplicativo usando o progresso da trilha guardado na API.
 - Controle do tempo de sessão durante a reprodução, com aviso suave quando o tempo acaba.
 - Sistema de recompensas visuais ao cumprir a meta da sessão.
 - Suavização progressiva do volume no início de cada som.
