@@ -118,7 +118,7 @@ cd backend && npm test
 
 O aplicativo já usa a API em toda a área do responsável: cadastro, login, criação e conferência do PIN, cadastro das crianças e configuração de volume máximo e tempo de sessão por criança. A jornada só abre depois do login e com uma criança escolhida, e o player usa o teto de volume dessa criança. Os áudios em `assets/sounds/` ainda são arquivos reservados e serão substituídos por sons reais, em versão normal e suave para cada cenário.
 
-As sessões de cada criança já são registradas na API, e a utilização semanal das configurações vem do banco. Os próximos passos concentram-se no progresso da trilha guardado no banco, no controle do tempo de sessão durante a reprodução, no sistema de recompensas visuais e na suavização progressiva do volume.
+As sessões e o progresso na trilha de cada criança já são guardados na API, e a utilização semanal das configurações vem do banco. Os próximos passos concentram-se no controle do tempo de sessão durante a reprodução, no sistema de recompensas visuais e na suavização progressiva do volume.
 
 ## Projeto relacionado
 

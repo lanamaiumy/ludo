@@ -52,7 +52,7 @@ O estado compartilhado fica em três contextos, cada um com uma responsabilidade
 
 - **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app, expõe `login` e `logout` e controla se a área dos pais está destrancada. A resposta da API chega com campos em português e é convertida para o formato interno por uma função de mapeamento, isolando o resto do app do formato do servidor. Quando a API responde que o token venceu, a sessão é encerrada automaticamente.
 - **`ActiveChildContext`**: guarda a criança que usa a jornada neste aparelho, escolhida pela estrela na lista de crianças, com o nome e a configuração dela. Fica salva no aparelho para o player funcionar sem rede, é atualizada sempre que a lista é carregada e é apagada no logout. Quando há uma única criança, ela é escolhida automaticamente.
-- **`ProgressContext`**: mantém os cenários concluídos e, sempre que há login, tenta reenviar as sessões que ficaram pendentes no aparelho.
+- **`ProgressContext`**: mantém os cenários desbloqueados e concluídos da criança ativa e, sempre que há login, tenta reenviar as sessões que ficaram pendentes no aparelho.
 
 A escolha pela Context API, e não por uma biblioteca de estado global, é proporcional ao problema: são poucos domínios de estado, com poucas atualizações e sem necessidade de seletores ou memoização fina. Adotar uma solução maior aqui traria configuração sem benefício.
 
@@ -71,6 +71,10 @@ As mensagens de erro exibidas ao responsável vêm da própria API, lidas por `g
 ### Catálogo de cenários (`src/data/scenarios.ts`)
 
 Os cenários e seus sons são declarados como dados estáticos, com os arquivos de áudio resolvidos por `require` para entrarem no bundle do aplicativo. Cada som tem uma versão normal e uma suave, o que sustenta o modo suave sem lógica de processamento de áudio em tempo de execução. Manter isso como dado, e não espalhado em componentes, permite adicionar um cenário novo alterando um arquivo só.
+
+O estado de cada cenário na trilha não fica nos dados: ele é calculado por `resolveTrail` (`src/helpers/trail.ts`) a partir do progresso da criança. O primeiro cenário está sempre liberado, os concluídos ganham o check, os desbloqueados ainda não concluídos aparecem como atuais e o resto fica com cadeado. Ao terminar um som, o cenário é concluído e o próximo, pela ordem da trilha, é desbloqueado.
+
+O progresso de cada criança fica guardado no aparelho e na API. Ao abrir o app, ou ao trocar a criança da jornada, o app mostra primeiro o que está no aparelho, depois busca o progresso na API, junta os dois e envia para a API o que só existia no aparelho. Como o progresso só avança, juntar é suficiente: um avanço feito sem conexão não se perde e nunca desfaz um avanço feito em outro aparelho.
 
 ## Backend (`backend/`)
 
@@ -229,7 +233,7 @@ Senha e PIN são guardados apenas como hash; o texto original nunca chega ao ban
 
 Em dois pontos o banco diverge da Figura 1 do projeto. O primeiro é o `pin_hash`, obrigatório na figura: o PIN é criado depois do cadastro, no primeiro acesso à área restrita, então a coluna passou a aceitar valor nulo e o aplicativo pede a criação do PIN antes de liberar a área restrita. O segundo é a coluna `concluido` em `progresso_trilha` (migração `004`): a figura guarda só `desbloqueado`, mas a trilha do protótipo mostra três estados (concluído, atual e bloqueado), e sem guardar a conclusão o último cenário nunca apareceria como concluído.
 
-O aplicativo já registra as sessões em `historico_sessao` e mostra a utilização semanal a partir dela, separada por criança. O progresso na trilha ainda fica no Async Storage do aparelho e passa a usar `progresso_trilha` em uma etapa própria.
+O aplicativo já registra as sessões em `historico_sessao` e mostra a utilização semanal a partir dela, separada por criança. O progresso na trilha também usa `progresso_trilha`, com uma cópia no aparelho para a trilha funcionar sem conexão.
 
 ## Decisões de segurança
 
@@ -259,7 +263,6 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Aplicativo usando o progresso da trilha guardado na API.
 - Controle do tempo de sessão durante a reprodução, com aviso suave quando o tempo acaba.
 - Sistema de recompensas visuais ao cumprir a meta da sessão.
 - Suavização progressiva do volume no início de cada som.
