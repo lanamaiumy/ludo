@@ -52,7 +52,7 @@ O estado compartilhado fica em três contextos, cada um com uma responsabilidade
 
 - **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app, expõe `login` e `logout` e controla se a área dos pais está destrancada. A resposta da API chega com campos em português e é convertida para o formato interno por uma função de mapeamento, isolando o resto do app do formato do servidor. Quando a API responde que o token venceu, a sessão é encerrada automaticamente.
 - **`ActiveChildContext`**: guarda a criança que usa a jornada neste aparelho, escolhida pela estrela na lista de crianças, com o nome e a configuração dela. Fica salva no aparelho para o player funcionar sem rede, é atualizada sempre que a lista é carregada e é apagada no logout. Quando há uma única criança, ela é escolhida automaticamente.
-- **`ProgressContext`**: mantém os cenários concluídos e a utilização semanal, derivada do histórico de sessões.
+- **`ProgressContext`**: mantém os cenários concluídos e, sempre que há login, tenta reenviar as sessões que ficaram pendentes no aparelho.
 
 A escolha pela Context API, e não por uma biblioteca de estado global, é proporcional ao problema: são poucos domínios de estado, com poucas atualizações e sem necessidade de seletores ou memoização fina. Adotar uma solução maior aqui traria configuração sem benefício.
 
@@ -64,7 +64,9 @@ O acesso ao Async Storage é centralizado em um helper tipado, com funções par
 
 Uma única instância do Axios concentra a comunicação com o servidor. A URL base vem de `EXPO_PUBLIC_API_URL`, nunca fixada no código, e um interceptador de requisição injeta o token no cabeçalho `Authorization: Bearer` automaticamente. Assim nenhuma tela precisa lembrar de enviar credenciais.
 
-As chamadas de crianças ficam em `src/services/children.ts`, que também converte o formato da API para o do app: os campos em português viram os nomes usados no código, e o volume máximo de 1 a 100 vira a escala de 0 a 1 do controle deslizante. As mensagens de erro exibidas ao responsável vêm da própria API, lidas por `getApiErrorMessage`, que prefere o erro do campo inválido e avisa quando o servidor não responde.
+As chamadas de crianças ficam em `src/services/children.ts`, que também converte o formato da API para o do app: os campos em português viram os nomes usados no código, e o volume máximo de 1 a 100 vira a escala de 0 a 1 do controle deslizante. As sessões ficam em `src/services/sessions.ts`. Quando a criança termina um som, o player registra a sessão da criança ativa com o dia do calendário do aparelho. Para não perder sessões feitas sem conexão, cada sessão entra primeiro em uma fila no aparelho e só sai dela depois que a API confirma; as que ficaram pendentes vão antes da nova, na ordem em que aconteceram. Falta de rede, login vencido ou excesso de tentativas mantêm a sessão na fila para depois, e uma recusa definitiva da API, como a de uma criança excluída, a descarta. A "Utilização da semana" das configurações é pedida à API a partir da segunda-feira da semana atual, como no protótipo.
+
+As mensagens de erro exibidas ao responsável vêm da própria API, lidas por `getApiErrorMessage`, que prefere o erro do campo inválido e avisa quando o servidor não responde.
 
 ### Catálogo de cenários (`src/data/scenarios.ts`)
 
@@ -227,7 +229,7 @@ Senha e PIN são guardados apenas como hash; o texto original nunca chega ao ban
 
 Em dois pontos o banco diverge da Figura 1 do projeto. O primeiro é o `pin_hash`, obrigatório na figura: o PIN é criado depois do cadastro, no primeiro acesso à área restrita, então a coluna passou a aceitar valor nulo e o aplicativo pede a criação do PIN antes de liberar a área restrita. O segundo é a coluna `concluido` em `progresso_trilha` (migração `004`): a figura guarda só `desbloqueado`, mas a trilha do protótipo mostra três estados (concluído, atual e bloqueado), e sem guardar a conclusão o último cenário nunca apareceria como concluído.
 
-A API já registra o histórico de sessões, mas o aplicativo ainda guarda o histórico e o progresso na trilha no Async Storage do aparelho. O app passa a usar `historico_sessao` e `progresso_trilha` em etapas próprias.
+O aplicativo já registra as sessões em `historico_sessao` e mostra a utilização semanal a partir dela, separada por criança. O progresso na trilha ainda fica no Async Storage do aparelho e passa a usar `progresso_trilha` em uma etapa própria.
 
 ## Decisões de segurança
 
@@ -257,7 +259,6 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Aplicativo registrando as sessões na API e mostrando a utilização semanal vinda do banco.
 - Aplicativo usando o progresso da trilha guardado na API.
 - Controle do tempo de sessão durante a reprodução, com aviso suave quando o tempo acaba.
 - Sistema de recompensas visuais ao cumprir a meta da sessão.
