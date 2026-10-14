@@ -10,11 +10,12 @@ import AudioPlayer from '../../../components/AudioPlayer';
 import { scenarios } from '../../../src/data/scenarios';
 import { useActiveChild } from '../../../src/contexts/ActiveChildContext';
 import { useProgress } from '../../../src/contexts/ProgressContext';
+import { registerSession } from '../../../src/services/sessions';
 
 export default function ExerciseScreen() {
   const router = useRouter();
   const { scenarioId } = useLocalSearchParams<{ scenarioId: string }>();
-  const { markScenarioCompleted, addSession } = useProgress();
+  const { markScenarioCompleted } = useProgress();
   const { activeChild, isLoading: childLoading } = useActiveChild();
 
   const scenario = useMemo(() => scenarios.find((item) => item.id === scenarioId), [scenarioId]);
@@ -31,18 +32,12 @@ export default function ExerciseScreen() {
   }, [childLoading, activeChild, router]);
 
   async function handleComplete() {
-    if (finished || !scenario || !sound) {
+    if (finished || !scenario || !sound || !activeChild) {
       return;
     }
     setFinished(true);
     await markScenarioCompleted(scenario.id);
-    await addSession({
-      date: new Date().toISOString(),
-      scenarioId: scenario.id,
-      soundId: sound.id,
-      completed: true,
-      usedSoftMode: soft,
-    });
+    await registerSession(activeChild.id, true);
   }
 
   if (!activeChild) {

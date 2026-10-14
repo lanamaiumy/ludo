@@ -1,61 +1,36 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { AsyncStorageHelper } from '../helpers/AsyncStorageHelper';
+import { flushPendingSessions } from '../services/sessions';
+import { useAuth } from './AuthContext';
 
 const COMPLETED_KEY = 'completed_scenarios';
-const SESSIONS_KEY = 'local_sessions';
-
-export type LocalSession = {
-  date: string;
-  scenarioId: string;
-  soundId: string;
-  completed: boolean;
-  usedSoftMode: boolean;
-};
 
 type ProgressContextData = {
   completedScenarios: string[];
-  weekUsage: boolean[];
   markScenarioCompleted: (id: string) => Promise<void>;
-  addSession: (session: LocalSession) => Promise<void>;
 };
 
 const ProgressContext = createContext<ProgressContextData | undefined>(undefined);
 
-function buildWeekUsage(sessions: LocalSession[]): boolean[] {
-  const week = [false, false, false, false, false, false, false];
-  for (const session of sessions) {
-    const day = new Date(session.date).getDay();
-    const index = (day + 6) % 7;
-    week[index] = true;
-  }
-  return week;
-}
-
 export function ProgressContextProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth();
   const [completedScenarios, setCompletedScenarios] = useState<string[]>([]);
-  const [weekUsage, setWeekUsage] = useState<boolean[]>([
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-  ]);
 
   useEffect(() => {
     async function loadStored() {
       const storedCompleted = await AsyncStorageHelper.getObject<string[]>(COMPLETED_KEY);
-      const storedSessions = await AsyncStorageHelper.getObject<LocalSession[]>(SESSIONS_KEY);
       if (storedCompleted) {
         setCompletedScenarios(storedCompleted);
-      }
-      if (storedSessions) {
-        setWeekUsage(buildWeekUsage(storedSessions));
       }
     }
     loadStored();
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      flushPendingSessions().catch(() => {});
+    }
+  }, [token]);
 
   // método que alimenta o contexto, quando o som acaba, chamamos o método e 
   // e adicionamos o cenário concluído na const completedScanearios
@@ -68,17 +43,8 @@ export function ProgressContextProvider({ children }: { children: ReactNode }) {
     await AsyncStorageHelper.setObject<string[]>(COMPLETED_KEY, updated);
   }
 
-  async function addSession(session: LocalSession): Promise<void> {
-    const stored = await AsyncStorageHelper.getObject<LocalSession[]>(SESSIONS_KEY);
-    const updated = stored ? [...stored, session] : [session];
-    await AsyncStorageHelper.setObject<LocalSession[]>(SESSIONS_KEY, updated);
-    setWeekUsage(buildWeekUsage(updated));
-  }
-
   return (
-    <ProgressContext.Provider
-      value={{ completedScenarios, weekUsage, markScenarioCompleted, addSession }}
-    >
+    <ProgressContext.Provider value={{ completedScenarios, markScenarioCompleted }}>
       {children}
     </ProgressContext.Provider>
   );

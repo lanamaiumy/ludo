@@ -9,23 +9,24 @@ import GradientBackground from '../../components/GradientBackground';
 import Mascot from '../../components/Mascot';
 import WeekUsage from '../../components/WeekUsage';
 import { useActiveChild } from '../../src/contexts/ActiveChildContext';
-import { useProgress } from '../../src/contexts/ProgressContext';
 import { getApiErrorMessage } from '../../src/helpers/apiError';
 import { notify } from '../../src/helpers/notify';
 import { useParentAccess } from '../../src/hooks/useParentAccess';
 import { getChild, restoreDefaultSettings, saveChildSettings } from '../../src/services/children';
+import { getWeekUsage } from '../../src/services/sessions';
 import { Child, SessionMinutes } from '../../src/types/Child';
 
 const SESSION_OPTIONS: SessionMinutes[] = [5, 10];
+const EMPTY_WEEK = [false, false, false, false, false, false, false];
 
 export default function SettingsScreen() {
   const router = useRouter();
   const hasAccess = useParentAccess();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { weekUsage } = useProgress();
   const { activeChild, selectChild } = useActiveChild();
   const [child, setChild] = useState<Child | null>(null);
   const [volume, setVolume] = useState(0.5);
+  const [weekUsage, setWeekUsage] = useState<boolean[]>(EMPTY_WEEK);
 
   useEffect(() => {
     if (!hasAccess || !id) {
@@ -40,6 +41,9 @@ export default function SettingsScreen() {
         notify(getApiErrorMessage(e, 'Não foi possível carregar a configuração.'));
         router.back();
       });
+    getWeekUsage(id)
+      .then(setWeekUsage)
+      .catch(() => setWeekUsage(EMPTY_WEEK));
   }, [hasAccess, id, router]);
 
   async function applyUpdate(request: Promise<Child>) {
