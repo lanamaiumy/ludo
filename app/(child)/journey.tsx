@@ -11,6 +11,7 @@ import JourneyTrail from '../../components/JourneyTrail';
 // os scenarios funcionam como objetos pré-definidos na aplicação, os scenarios são concluidos
 // de acordo com o que o useProgress() nos retorna na variavel const completedScenarios
 import { scenarios } from '../../src/data/scenarios';
+import { resolveTrail } from '../../src/helpers/trail';
 import { Scenario } from '../../src/types/Scenario';
 import { useProgress } from '../../src/contexts/ProgressContext'; //useProgress()
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -20,7 +21,7 @@ import { useActiveChild } from '../../src/contexts/ActiveChildContext';
 
 export default function JourneyScreen() {
   const router = useRouter();
-  const { completedScenarios } = useProgress();
+  const { completedScenarios, unlockedScenarios } = useProgress();
   const { token, isLoading } = useAuth();
   const { activeChild, isLoading: childLoading } = useActiveChild();
 
@@ -38,14 +39,7 @@ export default function JourneyScreen() {
     }
   }
 
-  function resolveStatus(scenario: Scenario): Scenario {
-    if (completedScenarios.includes(scenario.id) && scenario.status !== 'completed') {
-      return { ...scenario, status: 'completed' };
-    }
-    return scenario;
-  }
-
-  const ordered = [...scenarios].sort((a, b) => a.order - b.order).map(resolveStatus);
+  const ordered = resolveTrail(scenarios, { completed: completedScenarios, unlocked: unlockedScenarios });
   const display = [...ordered].reverse();
 
   function openExercise(scenario: Scenario) {
