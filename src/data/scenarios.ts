@@ -1,12 +1,11 @@
-import { Scenario } from '../types/Scenario';
+import { ScenarioData } from '../types/Scenario';
 
-export const scenarios: Scenario[] = [
+export const scenarios: ScenarioData[] = [
   {
     id: 'quarto',
     name: 'Quarto',
     icon: '🛏',
     order: 1,
-    status: 'completed',
     sounds: [
       {
         id: 'alarme',
@@ -22,7 +21,6 @@ export const scenarios: Scenario[] = [
     name: 'Sala',
     icon: '🛋',
     order: 2,
-    status: 'completed',
     sounds: [
       {
         id: 'tv',
@@ -38,7 +36,6 @@ export const scenarios: Scenario[] = [
     name: 'Parque',
     icon: '🌳',
     order: 3,
-    status: 'unlocked',
     sounds: [
       {
         id: 'passaros',
@@ -54,7 +51,6 @@ export const scenarios: Scenario[] = [
     name: 'Escola',
     icon: '🎓',
     order: 4,
-    status: 'locked',
     sounds: [
       {
         id: 'sinal',
@@ -70,7 +66,6 @@ export const scenarios: Scenario[] = [
     name: 'Rua',
     icon: '🚗',
     order: 5,
-    status: 'locked',
     sounds: [
       {
         id: 'buzina',

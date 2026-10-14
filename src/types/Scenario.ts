@@ -10,3 +10,5 @@ export type Scenario = {
   status: ScenarioStatus;
   sounds: Sound[];
 };
+
+export type ScenarioData = Omit<Scenario, 'status'>;
