@@ -9,6 +9,7 @@ import Logo from '../components/Logo';
 import Mascot from '../components/Mascot';
 import { useActiveChild } from '../src/contexts/ActiveChildContext';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useSession } from '../src/contexts/SessionContext';
 
 const LOGIN_HINT = 'Para ter acesso a essa página, realize login na Área dos Responsáveis.';
 const CHILD_HINT = 'Cadastre uma criança na Área dos Responsáveis para começar.';
@@ -22,13 +23,15 @@ export default function HomeScreen() {
   const router = useRouter();
   const { token } = useAuth();
   const { activeChild } = useActiveChild();
+  const { finishSession } = useSession();
   const [hint, setHint] = useState<string | null>(null);
   const isLocked = !token || !activeChild;
 
   useFocusEffect(
     useCallback(() => {
+      finishSession();
       setHint(null);
-    }, [])
+    }, [finishSession])
   );
 
   function startJourney() {

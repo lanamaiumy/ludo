@@ -48,11 +48,12 @@ A tela de PIN concentra os três fluxos com o mesmo teclado: conferir, criar (es
 
 ### Estado (`src/contexts/`)
 
-O estado compartilhado fica em três contextos, cada um com uma responsabilidade única:
+O estado compartilhado fica em quatro contextos, cada um com uma responsabilidade única:
 
 - **`AuthContext`**: guarda o usuário e o token, restaura a sessão do armazenamento local na abertura do app, expõe `login` e `logout` e controla se a área dos pais está destrancada. A resposta da API chega com campos em português e é convertida para o formato interno por uma função de mapeamento, isolando o resto do app do formato do servidor. Quando a API responde que o token venceu, a sessão é encerrada automaticamente.
 - **`ActiveChildContext`**: guarda a criança que usa a jornada neste aparelho, escolhida pela estrela na lista de crianças, com o nome e a configuração dela. Fica salva no aparelho para o player funcionar sem rede, é atualizada sempre que a lista é carregada e é apagada no logout. Quando há uma única criança, ela é escolhida automaticamente.
 - **`ProgressContext`**: mantém os cenários desbloqueados e concluídos da criança ativa e, sempre que há login, tenta reenviar as sessões que ficaram pendentes no aparelho.
+- **`SessionContext`**: controla o tempo da sessão da criança, do momento em que ela entra na trilha até completar o tempo configurado pelo responsável ou voltar ao início.
 
 A escolha pela Context API, e não por uma biblioteca de estado global, é proporcional ao problema: são poucos domínios de estado, com poucas atualizações e sem necessidade de seletores ou memoização fina. Adotar uma solução maior aqui traria configuração sem benefício.
 
@@ -64,9 +65,15 @@ O acesso ao Async Storage é centralizado em um helper tipado, com funções par
 
 Uma única instância do Axios concentra a comunicação com o servidor. A URL base vem de `EXPO_PUBLIC_API_URL`, nunca fixada no código, e um interceptador de requisição injeta o token no cabeçalho `Authorization: Bearer` automaticamente. Assim nenhuma tela precisa lembrar de enviar credenciais.
 
-As chamadas de crianças ficam em `src/services/children.ts`, que também converte o formato da API para o do app: os campos em português viram os nomes usados no código, e o volume máximo de 1 a 100 vira a escala de 0 a 1 do controle deslizante. As sessões ficam em `src/services/sessions.ts`. Quando a criança termina um som, o player registra a sessão da criança ativa com o dia do calendário do aparelho. Para não perder sessões feitas sem conexão, cada sessão entra primeiro em uma fila no aparelho e só sai dela depois que a API confirma; as que ficaram pendentes vão antes da nova, na ordem em que aconteceram. Falta de rede, login vencido ou excesso de tentativas mantêm a sessão na fila para depois, e uma recusa definitiva da API, como a de uma criança excluída, a descarta. A "Utilização da semana" das configurações é pedida à API a partir da segunda-feira da semana atual, como no protótipo.
+As chamadas de crianças ficam em `src/services/children.ts`, que também converte o formato da API para o do app: os campos em português viram os nomes usados no código, e o volume máximo de 1 a 100 vira a escala de 0 a 1 do controle deslizante. As sessões ficam em `src/services/sessions.ts` e são registradas com o dia do calendário do aparelho. Para não perder sessões feitas sem conexão, cada sessão entra primeiro em uma fila no aparelho e só sai dela depois que a API confirma; as que ficaram pendentes vão antes da nova, na ordem em que aconteceram. Falta de rede, login vencido ou excesso de tentativas mantêm a sessão na fila para depois, e uma recusa definitiva da API, como a de uma criança excluída, a descarta. A "Utilização da semana" das configurações é pedida à API a partir da segunda-feira da semana atual, como no protótipo.
 
 As mensagens de erro exibidas ao responsável vêm da própria API, lidas por `getApiErrorMessage`, que prefere o erro do campo inválido e avisa quando o servidor não responde.
+
+### Tempo de sessão
+
+A sessão começa quando a criança entra na trilha e continua enquanto ela vai e volta entre a trilha e o player. Quando completa o tempo configurado pelo responsável (5 ou 10 minutos), o som para e o app troca para uma tela calma, com o mascote e a mensagem de que o tempo de hoje acabou, e a sessão é registrada como concluída. Se a criança volta ao início ou o responsável abre a área dos pais antes disso, a sessão é registrada como não concluída; entradas de menos de 15 segundos, como um toque acidental, não são registradas.
+
+Não há contagem regressiva na tela. O capítulo 2.4 do projeto descarta contagens regressivas e outras mecânicas de pressão, porque geram ansiedade em crianças com TEA; o aviso acontece só no fim, de forma suave, como diz o protótipo das configurações.
 
 ### Catálogo de cenários (`src/data/scenarios.ts`)
 
@@ -263,7 +270,6 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Controle do tempo de sessão durante a reprodução, com aviso suave quando o tempo acaba.
 - Sistema de recompensas visuais ao cumprir a meta da sessão.
 - Suavização progressiva do volume no início de cada som.
 - Substituição dos áudios reservados por sons reais, em versão normal e suave.
