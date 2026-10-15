@@ -75,6 +75,12 @@ A sessão começa quando a criança entra na trilha e continua enquanto ela vai 
 
 Não há contagem regressiva na tela. O capítulo 2.4 do projeto descarta contagens regressivas e outras mecânicas de pressão, porque geram ansiedade em crianças com TEA; o aviso acontece só no fim, de forma suave, como diz o protótipo das configurações.
 
+### Volume e entrada suave do som
+
+O controle de volume do player começa em 20% do teto definido pelo responsável, e não no próprio teto: o capítulo 4.2 do projeto descreve a criança começando com o volume baixo e subindo aos poucos pelo controle deslizante, conforme se sente segura (RF02). O controle nunca passa do teto, qualquer que seja o gesto.
+
+Cada vez que o som começa, ele entra em silêncio e sobe até o volume escolhido em 3 segundos (RF07), para que nenhum som apareça de forma súbita. A subida segue uma curva que cresce devagar no início, calculada por `fadeInSteps` (`src/helpers/fade.ts`). Se a criança mexe no volume durante a subida, a escolha dela prevalece e a subida para; pausar também interrompe a subida.
+
 ### Recompensas visuais
 
 O reforço positivo do RF05 aparece em dois momentos: quando a criança ouve um som até o fim e quando cumpre o tempo da sessão. Nos dois, surge uma estrela dourada sobre um círculo claro (`RewardStar`), que aparece devagar, sem brilho piscando nem movimento brusco, e a mensagem é sempre a mesma, para a recompensa ser previsível.
@@ -280,5 +286,4 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Suavização progressiva do volume no início de cada som.
 - Substituição dos áudios reservados por sons reais, em versão normal e suave.
