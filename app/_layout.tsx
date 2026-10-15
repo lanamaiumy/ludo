@@ -13,6 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'; // medidas se
 import { AuthContextProvider } from '../src/contexts/AuthContext'; // estado de acesso dos pais
 import { ActiveChildContextProvider } from '../src/contexts/ActiveChildContext';
 import { ProgressContextProvider } from '../src/contexts/ProgressContext'; // progresso da criança
+import { SessionContextProvider } from '../src/contexts/SessionContext';
 
 // precisamos obrigatoriamente do _layout, são as regras de layout que 
 // vamos ter para qualquer página criada a partir do /app
@@ -62,12 +63,14 @@ export default function RootLayout() {
           <AuthContextProvider>
             <ActiveChildContextProvider>
               <ProgressContextProvider>
-                <Stack // definimos se vamos empilhar uma tela por cima de outra com o stack
-                  screenOptions={{
-                    headerShown: false, // definimos se teremos a barra de navegação ou não
-                    contentStyle: { backgroundColor: '#EAF4FF' },
-                  }}
-                />
+                <SessionContextProvider>
+                  <Stack // definimos se vamos empilhar uma tela por cima de outra com o stack
+                    screenOptions={{
+                      headerShown: false, // definimos se teremos a barra de navegação ou não
+                      contentStyle: { backgroundColor: '#EAF4FF' },
+                    }}
+                  />
+                </SessionContextProvider>
               </ProgressContextProvider>
             </ActiveChildContextProvider>
           </AuthContextProvider>
