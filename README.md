@@ -133,7 +133,7 @@ A versão suave é a usada pelo "Modo Suave" do player, com o mesmo som em inten
 
 O aplicativo já usa a API em toda a área do responsável: cadastro, login, criação e conferência do PIN, cadastro das crianças e configuração de volume máximo e tempo de sessão por criança. A jornada só abre depois do login e com uma criança escolhida, e o player usa o teto de volume dessa criança.
 
-As sessões e o progresso na trilha de cada criança já são guardados na API, e a utilização semanal das configurações vem do banco. A sessão da criança termina sozinha ao completar o tempo configurado, com um aviso suave. Ao ouvir um som até o fim e ao cumprir o tempo da sessão, a criança recebe uma estrela como reforço visual. O próximo passo é a suavização progressiva do volume.
+As sessões e o progresso na trilha de cada criança já são guardados na API, e a utilização semanal das configurações vem do banco. A sessão da criança termina sozinha ao completar o tempo configurado, com um aviso suave. Ao ouvir um som até o fim e ao cumprir o tempo da sessão, a criança recebe uma estrela como reforço visual. No player, o volume começa baixo e cada som entra suavemente, subindo do silêncio até o volume escolhido.
 
 ## Projeto relacionado
 
