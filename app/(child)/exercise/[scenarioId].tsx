@@ -81,7 +81,7 @@ export default function ExerciseScreen() {
             <Mascot size={96} variant="happy" />
             <View style={styles.bubble}>
               <Text style={styles.bubbleText}>
-                {activeChild.name}, vamos ouvir o {sound.name}?
+                {activeChild.name}, vamos ouvir {sound.article} {sound.name.toLowerCase()}?
               </Text>
             </View>
           </View>
