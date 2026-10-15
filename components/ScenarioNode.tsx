@@ -14,6 +14,7 @@ type Props = {
 const ICONS: Record<string, IconName> = {
   quarto: 'bed',
   sala: 'sofa',
+  cozinha: 'blender',
   parque: 'pine-tree',
   escola: 'school',
   rua: 'car',

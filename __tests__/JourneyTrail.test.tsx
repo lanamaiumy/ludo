@@ -10,7 +10,7 @@ function makeScenario(id: string, name: string, order: number, status: ScenarioS
     icon: '🎵',
     order,
     status,
-    sounds: [{ id: `${id}-som`, name: 'Som', description: 'Um som.', file: 1 }],
+    sounds: [{ id: `${id}-som`, name: 'Som', article: 'o', description: 'Um som.', file: 1 }],
   };
 }
 

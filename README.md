@@ -1,6 +1,6 @@
 # Ludo
 
-Aplicativo móvel de apoio à dessensibilização auditiva de crianças com Transtorno do Espectro Autista (TEA) e hipersensibilidade auditiva. O Ludo expõe a criança, de forma gradual e lúdica, a sons do cotidiano (despertador, televisão, pássaros, sinal da escola, buzina) organizados em uma trilha de cenários progressivos: quarto, sala, parque, rua e escola. A criança controla o volume dentro de um teto seguro e pode interromper a reprodução a qualquer momento, enquanto o responsável configura os limites e acompanha o progresso em uma área protegida.
+Aplicativo móvel de apoio à dessensibilização auditiva de crianças com Transtorno do Espectro Autista (TEA) e hipersensibilidade auditiva. O Ludo expõe a criança, de forma gradual e lúdica, a sons do cotidiano (despertador, televisão, liquidificador, crianças brincando, sinal da escola, buzina) organizados em uma trilha de seis cenários progressivos: quarto, sala, cozinha, parque, escola e rua. A criança controla o volume dentro de um teto seguro e pode interromper a reprodução a qualquer momento, enquanto o responsável configura os limites e acompanha o progresso em uma área protegida.
 
 Trabalho de Conclusão de Curso do curso de Tecnologia em Sistemas para Internet, UTFPR, 2026.
 
@@ -114,9 +114,24 @@ cd backend && npm test
 - [Arquitetura e decisões técnicas](docs/arquitetura.md): organização das camadas, modelo de dados e as razões de cada escolha.
 - [Fluxo de trabalho](docs/fluxo-de-trabalho.md): convenção de branches, commits e pull requests adotada no projeto.
 
+## Sons dos cenários
+
+A trilha tem seis cenários, do ambiente mais controlado ao mais imprevisível. Os áudios em `assets/sounds/` ainda são tons provisórios de 4 segundos, gerados só para o app funcionar de ponta a ponta. Para usar os sons reais, basta substituir cada arquivo mantendo o mesmo nome, sem mudar o código:
+
+| Ordem | Cenário | Som | Arquivo normal | Arquivo suave |
+|---|---|---|---|---|
+| 1 | Quarto | Despertador | `quarto/despertador.mp3` | `quarto/despertador_suave.mp3` |
+| 2 | Sala | Televisão | `sala/televisao.mp3` | `sala/televisao_suave.mp3` |
+| 3 | Cozinha | Liquidificador | `cozinha/liquidificador.mp3` | `cozinha/liquidificador_suave.mp3` |
+| 4 | Parque | Crianças brincando | `parque/criancas_brincando.mp3` | `parque/criancas_brincando_suave.mp3` |
+| 5 | Escola | Sinal da escola | `escola/sinal.mp3` | `escola/sinal_suave.mp3` |
+| 6 | Rua | Buzina | `rua/buzina.mp3` | `rua/buzina_suave.mp3` |
+
+A versão suave é a usada pelo "Modo Suave" do player, com o mesmo som em intensidade e frequências reduzidas.
+
 ## Estado atual
 
-O aplicativo já usa a API em toda a área do responsável: cadastro, login, criação e conferência do PIN, cadastro das crianças e configuração de volume máximo e tempo de sessão por criança. A jornada só abre depois do login e com uma criança escolhida, e o player usa o teto de volume dessa criança. Os áudios em `assets/sounds/` ainda são arquivos reservados e serão substituídos por sons reais, em versão normal e suave para cada cenário.
+O aplicativo já usa a API em toda a área do responsável: cadastro, login, criação e conferência do PIN, cadastro das crianças e configuração de volume máximo e tempo de sessão por criança. A jornada só abre depois do login e com uma criança escolhida, e o player usa o teto de volume dessa criança.
 
 As sessões e o progresso na trilha de cada criança já são guardados na API, e a utilização semanal das configurações vem do banco. A sessão da criança termina sozinha ao completar o tempo configurado, com um aviso suave. Os próximos passos concentram-se no sistema de recompensas visuais e na suavização progressiva do volume.
 

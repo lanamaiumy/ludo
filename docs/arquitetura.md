@@ -79,6 +79,10 @@ Não há contagem regressiva na tela. O capítulo 2.4 do projeto descarta contag
 
 Os cenários e seus sons são declarados como dados estáticos, com os arquivos de áudio resolvidos por `require` para entrarem no bundle do aplicativo. Cada som tem uma versão normal e uma suave, o que sustenta o modo suave sem lógica de processamento de áudio em tempo de execução. Manter isso como dado, e não espalhado em componentes, permite adicionar um cenário novo alterando um arquivo só.
 
+A trilha do MVP tem seis cenários, em ordem de complexidade: quarto (despertador), sala (televisão), cozinha (liquidificador), parque (crianças brincando), escola (sinal) e rua (buzina). A sequência segue o capítulo 4.2 do projeto, que vai dos ambientes internos e controlados aos externos e complexos, e cobre os contextos citados nos capítulos 1.1 e 2.1: eletrodomésticos, ambiente escolar e trânsito. Cada som traz o artigo do nome, para a frase do player ficar correta ("vamos ouvir as crianças brincando?"), e um teste protege a ordem, os identificadores e a presença das duas versões de cada áudio.
+
+Enquanto os sons reais não chegam, os áudios são tons curtos gerados com o ffmpeg, já com os nomes de arquivo definitivos. Assim os sons reais entram substituindo arquivos, sem mudança no código.
+
 O estado de cada cenário na trilha não fica nos dados: ele é calculado por `resolveTrail` (`src/helpers/trail.ts`) a partir do progresso da criança. O primeiro cenário está sempre liberado, os concluídos ganham o check, os desbloqueados ainda não concluídos aparecem como atuais e o resto fica com cadeado. Ao terminar um som, o cenário é concluído e o próximo, pela ordem da trilha, é desbloqueado.
 
 O progresso de cada criança fica guardado no aparelho e na API. Ao abrir o app, ou ao trocar a criança da jornada, o app mostra primeiro o que está no aparelho, depois busca o progresso na API, junta os dois e envia para a API o que só existia no aparelho. Como o progresso só avança, juntar é suficiente: um avanço feito sem conexão não se perde e nunca desfaz um avanço feito em outro aparelho.
