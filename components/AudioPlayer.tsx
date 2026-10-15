@@ -3,6 +3,11 @@ import { Audio, AVPlaybackSource, AVPlaybackStatus } from 'expo-av';
 import Slider from '@react-native-community/slider';
 import { StyleSheet, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
+import { fadeInSteps } from '../src/helpers/fade';
+
+const INITIAL_VOLUME_RATIO = 0.2;
+const FADE_IN_MS = 3000;
+const FADE_STEP_MS = 100;
 
 type Props = {
   soundFile: AVPlaybackSource;
@@ -26,7 +31,29 @@ export default function AudioPlayer({
   const [isLoaded, setIsLoaded] = useState(false);
   const [position, setPosition] = useState(0);
   const [duration, setDuration] = useState(1);
-  const [volume, setVolume] = useState(maxVolume);
+  const [volume, setVolume] = useState(maxVolume * INITIAL_VOLUME_RATIO);
+  const fadeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function stopFade() {
+    if (fadeTimer.current) {
+      clearInterval(fadeTimer.current);
+      fadeTimer.current = null;
+    }
+  }
+
+  function fadeIn(sound: Audio.Sound, target: number) {
+    stopFade();
+    const steps = fadeInSteps(target, FADE_IN_MS, FADE_STEP_MS);
+    let index = 0;
+    fadeTimer.current = setInterval(() => {
+      if (index >= steps.length) {
+        stopFade();
+        return;
+      }
+      sound.setVolumeAsync(steps[index]).catch(stopFade);
+      index += 1;
+    }, FADE_STEP_MS);
+  }
 
   function handleStatus(status: AVPlaybackStatus) {
     if (!status.isLoaded) {
@@ -68,6 +95,7 @@ export default function AudioPlayer({
     load();
     return () => {
       active = false;
+      stopFade();
       if (soundRef.current) {
         soundRef.current.unloadAsync();
         soundRef.current = null;
@@ -82,18 +110,24 @@ export default function AudioPlayer({
     }
     try {
       if (isPlaying) {
+        stopFade();
         await sound.pauseAsync();
-      } else if (position >= duration - 50) {
+        return;
+      }
+      await sound.setVolumeAsync(0);
+      if (position >= duration - 50) {
         await sound.replayAsync();
       } else {
         await sound.playAsync();
       }
+      fadeIn(sound, Math.min(volume, maxVolume));
     } catch (error) {
       setIsPlaying(false);
     }
   }
 
   async function changeVolume(value: number) {
+    stopFade();
     const limited = Math.min(value, maxVolume);
     setVolume(limited);
     const sound = soundRef.current;
@@ -117,6 +151,7 @@ export default function AudioPlayer({
           iconColor={isLoaded ? '#2E6FB7' : '#A9B7C7'}
           size={48}
           disabled={!isLoaded}
+          accessibilityLabel={isPlaying ? 'Pausar o som' : 'Tocar o som'}
           onPress={togglePlay}
         />
       </View>
