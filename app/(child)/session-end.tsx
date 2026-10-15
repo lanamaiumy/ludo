@@ -4,6 +4,7 @@ import { Button, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import GradientBackground from '../../components/GradientBackground';
 import Mascot from '../../components/Mascot';
+import RewardStar from '../../components/RewardStar';
 import { useActiveChild } from '../../src/contexts/ActiveChildContext';
 import { useSession } from '../../src/contexts/SessionContext';
 
@@ -21,8 +22,12 @@ export default function SessionEndScreen() {
     <GradientBackground>
       <SafeAreaView style={styles.safe}>
         <View style={styles.content}>
-          <Mascot size={220} />
+          <RewardStar size={88} />
+          <Mascot size={180} />
           <Text style={styles.title}>Muito bem{activeChild ? `, ${activeChild.name}` : ''}!</Text>
+          <Text style={styles.message}>
+            Você ganhou uma estrela por ouvir os sons até o fim do tempo combinado.
+          </Text>
           <Text style={styles.message}>
             O tempo de hoje acabou. Você ficou {activeChild?.sessionMinutes ?? 0} minutos ouvindo os sons no seu ritmo.
           </Text>
