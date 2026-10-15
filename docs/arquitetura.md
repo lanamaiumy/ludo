@@ -75,6 +75,12 @@ A sessão começa quando a criança entra na trilha e continua enquanto ela vai 
 
 Não há contagem regressiva na tela. O capítulo 2.4 do projeto descarta contagens regressivas e outras mecânicas de pressão, porque geram ansiedade em crianças com TEA; o aviso acontece só no fim, de forma suave, como diz o protótipo das configurações.
 
+### Recompensas visuais
+
+O reforço positivo do RF05 aparece em dois momentos: quando a criança ouve um som até o fim e quando cumpre o tempo da sessão. Nos dois, surge uma estrela dourada sobre um círculo claro (`RewardStar`), que aparece devagar, sem brilho piscando nem movimento brusco, e a mensagem é sempre a mesma, para a recompensa ser previsível.
+
+A recompensa não tem contador, sequência de dias nem comparação: o capítulo 2.4 do projeto descarta esses recursos porque introduzem pressão e competição. Quando o aparelho está configurado para reduzir movimento, a estrela aparece de uma vez, sem animação. O avanço de longo prazo fica visível na própria trilha, como um mapa de conquistas, com o check em cada cenário concluído.
+
 ### Catálogo de cenários (`src/data/scenarios.ts`)
 
 Os cenários e seus sons são declarados como dados estáticos, com os arquivos de áudio resolvidos por `require` para entrarem no bundle do aplicativo. Cada som tem uma versão normal e uma suave, o que sustenta o modo suave sem lógica de processamento de áudio em tempo de execução. Manter isso como dado, e não espalhado em componentes, permite adicionar um cenário novo alterando um arquivo só.
@@ -274,6 +280,5 @@ Na API, os testes usam o executor nativo do Node (`node:test`) com o Supertest, 
 
 ## O que ainda vai mudar
 
-- Sistema de recompensas visuais ao cumprir a meta da sessão.
 - Suavização progressiva do volume no início de cada som.
 - Substituição dos áudios reservados por sons reais, em versão normal e suave.

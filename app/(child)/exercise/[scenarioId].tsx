@@ -7,6 +7,7 @@ import GradientBackground from '../../../components/GradientBackground';
 import Logo from '../../../components/Logo';
 import Mascot from '../../../components/Mascot';
 import AudioPlayer from '../../../components/AudioPlayer';
+import RewardStar from '../../../components/RewardStar';
 import { scenarios } from '../../../src/data/scenarios';
 import { useActiveChild } from '../../../src/contexts/ActiveChildContext';
 import { useProgress } from '../../../src/contexts/ProgressContext';
@@ -129,7 +130,8 @@ export default function ExerciseScreen() {
           {finished && (
             <Card style={styles.congratsCard}>
               <Card.Content style={styles.congratsContent}>
-                <Text style={styles.congratsText}>Muito bem! Você ouviu o som todo. 🎉</Text>
+                <RewardStar size={56} />
+                <Text style={styles.congratsText}>Muito bem! Você ouviu o som todo.</Text>
                 <Button
                   mode="contained"
                   buttonColor="#6BCB77"
