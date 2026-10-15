@@ -10,7 +10,6 @@ import AudioPlayer from '../../../components/AudioPlayer';
 import { scenarios } from '../../../src/data/scenarios';
 import { useActiveChild } from '../../../src/contexts/ActiveChildContext';
 import { useProgress } from '../../../src/contexts/ProgressContext';
-import { registerSession } from '../../../src/services/sessions';
 
 export default function ExerciseScreen() {
   const router = useRouter();
@@ -37,7 +36,6 @@ export default function ExerciseScreen() {
     }
     setFinished(true);
     await markScenarioCompleted(scenario.id);
-    await registerSession(activeChild.id, true);
   }
 
   if (!activeChild) {

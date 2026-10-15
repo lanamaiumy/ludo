@@ -153,6 +153,7 @@ export default function SettingsScreen() {
                   </Button>
                 ))}
               </View>
+              <Text style={styles.caption}>O app avisará suavemente quando o tempo acabar.</Text>
             </Card.Content>
           </Card>
 
@@ -251,6 +252,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
+  },
+  caption: {
+    fontSize: 12,
+    color: '#8AA0B8',
+    textAlign: 'center',
+    marginTop: 10,
   },
   sessionButton: {
     flex: 1,
