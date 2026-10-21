@@ -116,7 +116,7 @@ cd backend && npm test
 
 ## Sons dos cenários
 
-A trilha tem seis cenários, do ambiente mais controlado ao mais imprevisível. Os áudios em `assets/sounds/` ainda são tons provisórios de 4 segundos, gerados só para o app funcionar de ponta a ponta. Para usar os sons reais, basta substituir cada arquivo mantendo o mesmo nome, sem mudar o código:
+A trilha tem seis cenários, do ambiente mais controlado ao mais imprevisível. Quarto, sala e cozinha já têm os sons definitivos, de 2 minutos cada. Parque, escola e rua ainda usam tons provisórios de 4 segundos, gerados só para o app funcionar de ponta a ponta. Para trocar um som, basta substituir o arquivo mantendo o mesmo nome, sem mudar o código:
 
 | Ordem | Cenário | Som | Arquivo normal | Arquivo suave |
 |---|---|---|---|---|
