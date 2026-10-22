@@ -81,6 +81,8 @@ O controle de volume do player começa em 20% do teto definido pelo responsável
 
 Cada vez que o som começa, ele entra em silêncio e sobe até o volume escolhido em 3 segundos (RF07), para que nenhum som apareça de forma súbita. A subida segue uma curva que cresce devagar no início, calculada por `fadeInSteps` (`src/helpers/fade.ts`). Se a criança mexe no volume durante a subida, a escolha dela prevalece e a subida para; pausar também interrompe a subida.
 
+O player usa o `expo-audio`, que substituiu o `expo-av` a partir do SDK 57 do Expo: o `expo-av` não existe mais nas versões novas do Expo Go, e sem a troca o app abriria no iPhone mas quebraria ao tocar um som. O plugin do `expo-audio` é configurado sem permissão de microfone e sem reprodução em segundo plano, já que o Ludo só toca sons e só com o app aberto.
+
 Na abertura do app, o modo de áudio do aparelho é configurado uma vez (`src/helpers/audioMode.ts`). Os sons tocam mesmo com o iPhone na chave de silencioso, já que sem isso o exercício ficaria mudo sem nenhum aviso. Enquanto um som do Ludo toca, o áudio de outros apps é pausado, para a criança ouvir só o som do exercício, e a reprodução acontece pelo alto-falante e só com o app aberto.
 
 ### Recompensas visuais
