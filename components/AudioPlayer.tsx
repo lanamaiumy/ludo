@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Audio, AVPlaybackSource, AVPlaybackStatus } from 'expo-av';
+import { AudioPlayer as Player, AudioSource, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import Slider from '@react-native-community/slider';
 import { StyleSheet, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
@@ -8,15 +8,20 @@ import { fadeInSteps } from '../src/helpers/fade';
 const INITIAL_VOLUME_RATIO = 0.2;
 const FADE_IN_MS = 3000;
 const FADE_STEP_MS = 100;
+const END_TOLERANCE_SECONDS = 0.05;
 
 type Props = {
-  soundFile: AVPlaybackSource;
-  softFile?: AVPlaybackSource;
+  soundFile: AudioSource;
+  softFile?: AudioSource;
   maxVolume: number;
   soundName: string;
   soft: boolean;
   onComplete: () => void;
 };
+
+function setPlayerVolume(player: Player, value: number) {
+  player.volume = value;
+}
 
 export default function AudioPlayer({
   soundFile,
@@ -26,13 +31,12 @@ export default function AudioPlayer({
   soft,
   onComplete,
 }: Props) {
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(1);
+  const player = useAudioPlayer(soft && softFile ? softFile : soundFile);
+  const status = useAudioPlayerStatus(player);
   const [volume, setVolume] = useState(maxVolume * INITIAL_VOLUME_RATIO);
   const fadeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isLoaded = status.isLoaded;
+  const isPlaying = status.playing;
 
   function stopFade() {
     if (fadeTimer.current) {
@@ -41,7 +45,7 @@ export default function AudioPlayer({
     }
   }
 
-  function fadeIn(sound: Audio.Sound, target: number) {
+  function fadeIn(target: number) {
     stopFade();
     const steps = fadeInSteps(target, FADE_IN_MS, FADE_STEP_MS);
     let index = 0;
@@ -50,98 +54,48 @@ export default function AudioPlayer({
         stopFade();
         return;
       }
-      sound.setVolumeAsync(steps[index]).catch(stopFade);
+      setPlayerVolume(player, steps[index]);
       index += 1;
     }, FADE_STEP_MS);
   }
 
-  function handleStatus(status: AVPlaybackStatus) {
-    if (!status.isLoaded) {
-      setIsLoaded(false);
-      return;
-    }
-    setIsLoaded(true);
-    setPosition(status.positionMillis);
-    setDuration(status.durationMillis ?? 1);
-    setIsPlaying(status.isPlaying);
-    if (status.didJustFinish) {
-      setIsPlaying(false);
-      onComplete();
-    }
-  }
+  useEffect(() => {
+    setPlayerVolume(player, Math.min(volume, maxVolume));
+    return stopFade;
+  }, [player]);
 
   useEffect(() => {
-    let active = true;
-    async function load() {
-      try {
-        if (soundRef.current) {
-          await soundRef.current.unloadAsync();
-          soundRef.current = null;
-        }
-        const source = soft && softFile ? softFile : soundFile;
-        const { sound } = await Audio.Sound.createAsync(source, {
-          volume: Math.min(volume, maxVolume),
-        });
-        if (!active) {
-          await sound.unloadAsync();
-          return;
-        }
-        soundRef.current = sound;
-        sound.setOnPlaybackStatusUpdate(handleStatus);
-      } catch (error) {
-        setIsLoaded(false);
-      }
-    }
-    load();
-    return () => {
-      active = false;
+    if (status.didJustFinish) {
       stopFade();
-      if (soundRef.current) {
-        soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-    };
-  }, [soft, soundFile, softFile]);
+      onComplete();
+    }
+  }, [status.didJustFinish]);
 
   async function togglePlay() {
-    const sound = soundRef.current;
-    if (!sound || !isLoaded) {
+    if (!isLoaded) {
       return;
     }
-    try {
-      if (isPlaying) {
-        stopFade();
-        await sound.pauseAsync();
-        return;
-      }
-      await sound.setVolumeAsync(0);
-      if (position >= duration - 50) {
-        await sound.replayAsync();
-      } else {
-        await sound.playAsync();
-      }
-      fadeIn(sound, Math.min(volume, maxVolume));
-    } catch (error) {
-      setIsPlaying(false);
+    if (isPlaying) {
+      stopFade();
+      player.pause();
+      return;
     }
+    setPlayerVolume(player, 0);
+    if (status.duration > 0 && status.currentTime >= status.duration - END_TOLERANCE_SECONDS) {
+      await player.seekTo(0);
+    }
+    player.play();
+    fadeIn(Math.min(volume, maxVolume));
   }
 
-  async function changeVolume(value: number) {
+  function changeVolume(value: number) {
     stopFade();
     const limited = Math.min(value, maxVolume);
     setVolume(limited);
-    const sound = soundRef.current;
-    if (!sound || !isLoaded) {
-      return;
-    }
-    try {
-      await sound.setVolumeAsync(limited);
-    } catch (error) {
-      setIsLoaded(false);
-    }
+    setPlayerVolume(player, limited);
   }
 
-  const progress = duration > 0 ? position / duration : 0;
+  const progress = status.duration > 0 ? status.currentTime / status.duration : 0;
 
   return (
     <View style={styles.card}>
