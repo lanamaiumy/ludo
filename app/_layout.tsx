@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { Appearance } from 'react-native'; // fonte importada
 import {
@@ -14,6 +15,7 @@ import { AuthContextProvider } from '../src/contexts/AuthContext'; // estado de 
 import { ActiveChildContextProvider } from '../src/contexts/ActiveChildContext';
 import { ProgressContextProvider } from '../src/contexts/ProgressContext'; // progresso da criança
 import { SessionContextProvider } from '../src/contexts/SessionContext';
+import { configureAudioMode } from '../src/helpers/audioMode';
 
 // precisamos obrigatoriamente do _layout, são as regras de layout que 
 // vamos ter para qualquer página criada a partir do /app
@@ -51,6 +53,10 @@ export default function RootLayout() {
     PlusJakartaSans_700Bold,
     PlusJakartaSans_800ExtraBold,
   });
+
+  useEffect(() => {
+    configureAudioMode().catch(() => {});
+  }, []);
 
   if (!fontsLoaded) {
     return null;

@@ -81,6 +81,8 @@ O controle de volume do player começa em 20% do teto definido pelo responsável
 
 Cada vez que o som começa, ele entra em silêncio e sobe até o volume escolhido em 3 segundos (RF07), para que nenhum som apareça de forma súbita. A subida segue uma curva que cresce devagar no início, calculada por `fadeInSteps` (`src/helpers/fade.ts`). Se a criança mexe no volume durante a subida, a escolha dela prevalece e a subida para; pausar também interrompe a subida.
 
+Na abertura do app, o modo de áudio do aparelho é configurado uma vez (`src/helpers/audioMode.ts`). Os sons tocam mesmo com o iPhone na chave de silencioso, já que sem isso o exercício ficaria mudo sem nenhum aviso. Enquanto um som do Ludo toca, o áudio de outros apps é pausado, para a criança ouvir só o som do exercício, e a reprodução acontece pelo alto-falante e só com o app aberto.
+
 ### Recompensas visuais
 
 O reforço positivo do RF05 aparece em dois momentos: quando a criança ouve um som até o fim e quando cumpre o tempo da sessão. Nos dois, surge uma estrela dourada sobre um círculo claro (`RewardStar`), que aparece devagar, sem brilho piscando nem movimento brusco, e a mensagem é sempre a mesma, para a recompensa ser previsível.
