@@ -37,7 +37,7 @@ O Ludo atende dois perfis complementares:
 | Navegação | Expo Router, com grupos de rotas `(child)` e `(parent)` |
 | Interface | React Native Paper |
 | Estado | Context API (`AuthContext`, `ActiveChildContext`, `ProgressContext`) |
-| Áudio | expo-av |
+| Áudio | expo-audio |
 | Persistência local | Async Storage |
 | API | REST em Node.js com TypeScript e Express |
 | Banco de dados | PostgreSQL |
