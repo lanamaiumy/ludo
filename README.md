@@ -33,7 +33,7 @@ O Ludo atende dois perfis complementares:
 
 | Camada | Tecnologia |
 |---|---|
-| Aplicativo | React Native com Expo (SDK 56) e TypeScript |
+| Aplicativo | React Native com Expo (SDK 57) e TypeScript |
 | Navegação | Expo Router, com grupos de rotas `(child)` e `(parent)` |
 | Interface | React Native Paper |
 | Estado | Context API (`AuthContext`, `ActiveChildContext`, `ProgressContext`) |
